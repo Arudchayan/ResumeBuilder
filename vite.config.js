@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Use relative base so the app works on GitHub Pages project paths
-  base: './',
+  // Use project base for GitHub Pages under /Resume_Maker/
+  base: '/Resume_Maker/',
   plugins: [react()],
   server: {
     port: 3000,
