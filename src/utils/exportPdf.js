@@ -1,0 +1,175 @@
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { toast } from "sonner";
+
+export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
+  try {
+    toast.info("Generating PDF...");
+    
+    const originalSheet = document.querySelector(".sheet");
+    if (!originalSheet) throw new Error("Could not find .sheet element");
+
+    // Paper size dimensions
+    const paperSizes = {
+      a4: { width: 210, height: 297 },
+      letter: { width: 215.9, height: 279.4 },
+      legal: { width: 215.9, height: 355.6 }
+    };
+    
+    const currentPaper = paperSizes[paperSize] || paperSizes.a4;
+
+    // Hide page break indicator
+    const pageBreakIndicator = document.querySelector(".page-break-indicator");
+    if (pageBreakIndicator) {
+      pageBreakIndicator.style.display = 'none';
+    }
+
+    await document.fonts?.ready;
+    
+    // Get paper dimensions
+    const pdfFormat = paperSize === 'a4' ? 'a4' : 
+                      paperSize === 'letter' ? [215.9, 279.4] : 
+                      [215.9, 355.6];
+    
+    const pdf = new jsPDF("p", "mm", pdfFormat);
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Convert mm to pixels (96 DPI standard)
+    const mmToPx = 3.7795275591;
+    const pageHeightPx = pageHeight * mmToPx;
+
+    // Clone the original sheet for manipulation
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    document.body.appendChild(tempContainer);
+
+    // Create page 1 (with sidebar and content)
+    const page1 = originalSheet.cloneNode(true);
+    page1.style.width = `${currentPaper.width}mm`;
+    page1.style.height = `${currentPaper.height}mm`;
+    page1.style.minHeight = `${currentPaper.height}mm`;
+    page1.style.maxHeight = `${currentPaper.height}mm`;
+    page1.style.overflow = 'hidden';
+    page1.style.fontSize = `${fontSize}%`;
+    page1.style.background = 'white';
+    
+    // Apply padding to cloned elements
+    const page1Aside = page1.querySelector('aside');
+    const page1Main = page1.querySelector('main');
+    if (page1Aside) page1Aside.style.padding = `${contentPadding}px ${contentPadding * 0.667}px`;
+    if (page1Main) page1Main.style.padding = `${contentPadding}px`;
+    
+    // Remove page break indicator from clone
+    const clonedIndicator = page1.querySelector('.page-break-indicator');
+    if (clonedIndicator) clonedIndicator.remove();
+    
+    tempContainer.appendChild(page1);
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Capture page 1
+    const canvas1 = await html2canvas(page1, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      width: page1.offsetWidth,
+      height: page1.offsetHeight
+    });
+
+    // Add page 1 to PDF
+    const imgData1 = canvas1.toDataURL("image/png");
+    pdf.addImage(imgData1, "PNG", 0, 0, pageWidth, pageHeight);
+
+    // Check if we need page 2+ by measuring main content height
+    const mainContent = originalSheet.querySelector('main');
+    if (mainContent && mainContent.scrollHeight > pageHeightPx) {
+      // Calculate how many additional pages needed
+      const remainingHeight = mainContent.scrollHeight - pageHeightPx;
+      const additionalPages = Math.ceil(remainingHeight / pageHeightPx);
+
+      for (let i = 0; i < additionalPages; i++) {
+        // Clone the ENTIRE sheet structure to maintain exact layout
+        const pageN = originalSheet.cloneNode(true);
+        pageN.style.width = `${currentPaper.width}mm`;
+        pageN.style.height = `${currentPaper.height}mm`;
+        pageN.style.minHeight = `${currentPaper.height}mm`;
+        pageN.style.maxHeight = `${currentPaper.height}mm`;
+        pageN.style.overflow = 'hidden';
+        pageN.style.fontSize = `${fontSize}%`;
+        pageN.style.background = 'white';
+
+        // Get aside and main from the cloned page
+        const pageNAside = pageN.querySelector('aside');
+        const pageNMain = pageN.querySelector('main');
+        
+        // Empty the sidebar but keep it to maintain layout/margins
+        if (pageNAside) {
+          pageNAside.innerHTML = '';
+          pageNAside.style.padding = `${contentPadding}px ${contentPadding * 0.667}px`;
+        }
+        
+        // Shift main content up to show next portion
+        if (pageNMain) {
+          pageNMain.style.padding = `${contentPadding}px`;
+          pageNMain.style.marginTop = `-${pageHeightPx * (i + 1)}px`;
+        }
+        
+        // Remove page break indicator
+        const pageNIndicator = pageN.querySelector('.page-break-indicator');
+        if (pageNIndicator) pageNIndicator.remove();
+
+        tempContainer.appendChild(pageN);
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Capture page N
+        const canvasN = await html2canvas(pageN, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          width: pageN.offsetWidth,
+          height: pageN.offsetHeight
+        });
+
+        // Add to PDF
+        pdf.addPage();
+        const imgDataN = canvasN.toDataURL("image/png");
+        pdf.addImage(imgDataN, "PNG", 0, 0, pageWidth, pageHeight);
+
+        pageN.remove();
+      }
+    }
+
+    // Cleanup
+    tempContainer.remove();
+    
+    // Show page break indicator again
+    if (pageBreakIndicator) {
+      pageBreakIndicator.style.display = '';
+    }
+
+    const filename = `${(state.name || "resume").replace(/\s+/g, "_")}.pdf`;
+    pdf.save(filename);
+    
+    const paperName = currentPaper.width === 210 ? 'A4' : 
+                     currentPaper.width === 215.9 && currentPaper.height < 300 ? 'Letter' : 'Legal';
+    toast.success(`PDF exported successfully (${paperName})!`);
+    
+    return true;
+  } catch (err) {
+    console.error("PDF export failed", err);
+    toast.error("PDF export failed: " + (err?.message || err));
+    
+    // Cleanup on error
+    const tempContainer = document.querySelector('div[style*="-9999px"]');
+    if (tempContainer) tempContainer.remove();
+    
+    const pageBreakIndicator = document.querySelector(".page-break-indicator");
+    if (pageBreakIndicator) {
+      pageBreakIndicator.style.display = '';
+    }
+    
+    return false;
+  }
+}

@@ -1,0 +1,27 @@
+import { toast } from "sonner";
+
+export default function Input(props) { 
+  const handlePaste = (e) => {
+    if (props.maxLength) {
+      const paste = e.clipboardData.getData('text');
+      const currentValue = e.target.value;
+      const selectionStart = e.target.selectionStart;
+      const selectionEnd = e.target.selectionEnd;
+      const newValue = currentValue.substring(0, selectionStart) + paste + currentValue.substring(selectionEnd);
+      
+      if (newValue.length > props.maxLength) {
+        e.preventDefault();
+        const allowedPaste = paste.substring(0, props.maxLength - (currentValue.length - (selectionEnd - selectionStart)));
+        const finalValue = currentValue.substring(0, selectionStart) + allowedPaste + currentValue.substring(selectionEnd);
+        e.target.value = finalValue;
+        if (props.onChange) {
+          props.onChange({ target: { value: finalValue } });
+        }
+        toast.warning(`Text trimmed to ${props.maxLength} characters`);
+      }
+    }
+  };
+  
+  return <input {...props} onPaste={handlePaste} className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 ${props.className||""}`} />; 
+}
+

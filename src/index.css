@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme-aware styles using CSS variables */
+.text-theme-primary {
+  color: var(--theme-primary, #14b8a6);
+}
+
+.text-theme-dark {
+  color: var(--theme-dark, #0f766e);
+}
+
+.bg-theme-primary {
+  background-color: var(--theme-primary, #14b8a6);
+}
+
+.bg-theme-dark {
+  background-color: var(--theme-dark, #0f766e);
+}
+
+.border-theme-primary {
+  border-color: var(--theme-primary, #14b8a6);
+}
+
+.ring-theme-primary {
+  --tw-ring-color: var(--theme-primary, #14b8a6);
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
+
+/* Custom styles for resume builder */
+@layer components {
+  .sheet {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

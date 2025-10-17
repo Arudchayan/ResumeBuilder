@@ -1,0 +1,1469 @@
+import { useMemo, useRef, useEffect, memo, useState } from "react";
+import { Plus, Trash2, Upload, Download, Printer, Save, Undo2, Redo2 } from "lucide-react";
+import { toast } from "sonner";
+import useUndo from "use-undo";
+import DOMPurify from "dompurify";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
+// ==========================================================
+// Resume Builder — Photo + Link Labels + Location Formatting
+// + True PDF export (html2canvas + jsPDF, multi-page support)
+// ==========================================================
+
+export default function ResumeBuilder() {
+  // Initialize state with undo/redo support
+  const initialState = useMemo(() => {
+    // Try to load from localStorage on mount
+    try {
+      const saved = localStorage.getItem('resume_draft');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Check if it's recent (within last 7 days)
+        if (parsed._savedAt && Date.now() - parsed._savedAt < 7 * 24 * 60 * 60 * 1000) {
+          delete parsed._savedAt;
+          return safeHydrate(parsed);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load saved resume:', e);
+    }
+    return blankState();
+  }, []);
+  
+  const [state, { set: setState, undo, redo, canUndo, canRedo }] = useUndo(initialState);
+  
+  const fileInputRef = useRef(null);
+  const [exporting, setExporting] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
+  const [paperSize, setPaperSize] = useState('a4'); // a4, letter, legal
+  const [contentPadding, setContentPadding] = useState(48); // padding in pixels (default 48px = 12mm at 96dpi)
+  const [fontSize, setFontSize] = useState(100); // percentage scale (100 = normal)
+
+  const asChips = useMemo(() => (state.present.skills || []).filter(Boolean), [state.present.skills]);
+  
+  // Paper size dimensions (width x height in mm)
+  const paperSizes = {
+    a4: { width: 210, height: 297, name: 'A4 (210×297mm)' },
+    letter: { width: 215.9, height: 279.4, name: 'Letter (8.5×11")' },
+    legal: { width: 215.9, height: 355.6, name: 'Legal (8.5×14")' }
+  };
+  
+  const currentPaper = paperSizes[paperSize] || paperSizes.a4;
+
+  // Auto-save to localStorage with quota management
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const toSave = { ...state.present, _savedAt: Date.now() };
+        const dataStr = JSON.stringify(toSave);
+        
+        // Check size (localStorage typically has ~5-10MB limit)
+        const sizeMB = new Blob([dataStr]).size / (1024 * 1024);
+        if (sizeMB > 4) {
+          toast.error('Resume data too large to auto-save (>4MB). Consider reducing content.');
+          return;
+        }
+        
+        try {
+          localStorage.setItem('resume_draft', dataStr);
+          setLastSaved(new Date());
+          
+          // Clean up old backup drafts if they exist
+          cleanupOldDrafts();
+        } catch (quotaError) {
+          // If quota exceeded, try clearing old data and retry
+          console.warn('LocalStorage quota exceeded, cleaning up...');
+          clearOldResumeData();
+          try {
+            localStorage.setItem('resume_draft', dataStr);
+            setLastSaved(new Date());
+            toast.warning('Storage cleaned to save your draft');
+          } catch (retryError) {
+            toast.error('Failed to auto-save: storage full. Export as JSON to backup.');
+          }
+        }
+      } catch (e) {
+        console.error('Failed to save resume:', e);
+      }
+    }, 2000); // Debounce 2 seconds
+
+    return () => clearTimeout(timer);
+  }, [state.present]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyboard = (e) => {
+      // Ctrl+Z or Cmd+Z for undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) {
+          undo();
+          toast.info('Undo');
+        }
+      }
+      // Ctrl+Y or Cmd+Y or Ctrl+Shift+Z for redo
+      if (((e.ctrlKey || e.metaKey) && e.key === 'y') || 
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) {
+        e.preventDefault();
+        if (canRedo) {
+          redo();
+          toast.info('Redo');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyboard);
+    return () => window.removeEventListener('keydown', handleKeyboard);
+  }, [undo, redo, canUndo, canRedo]);
+
+  function update(path, value) {
+    const next = structuredClone(state.present);
+    const parts = path.split(".");
+    let obj = next;
+    for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+    obj[parts.at(-1)] = value;
+    setState(next);
+  }
+
+  function addRow(key, value) {
+    const next = structuredClone(state.present);
+    next[key].push(value);
+    setState(next);
+  }
+
+  function removeRow(key, idx) {
+    const next = structuredClone(state.present);
+    next[key].splice(idx, 1);
+    setState(next);
+  }
+
+  function addJobSection(jdx) {
+    const next = structuredClone(state.present);
+    next.jobs[jdx].sections.push({ title: "", bullets: [""] });
+    setState(next);
+  }
+
+  function removeJob(idx) {
+    const next = structuredClone(state.present);
+    next.jobs.splice(idx, 1);
+    setState(next);
+  }
+
+  function updateJob(jdx, field, value) {
+    const next = structuredClone(state.present);
+    next.jobs[jdx][field] = value;
+    setState(next);
+  }
+
+  function removeJobSection(jdx, sidx) {
+    const next = structuredClone(state.present);
+    next.jobs[jdx].sections.splice(sidx, 1);
+    setState(next);
+  }
+
+  function updateJobSection(jdx, sidx, field, value) {
+    const next = structuredClone(state.present);
+    next.jobs[jdx].sections[sidx][field] = value;
+    setState(next);
+  }
+
+  function addBullet(jdx, sidx) {
+    const next = structuredClone(state.present);
+    next.jobs[jdx].sections[sidx].bullets.push("");
+    setState(next);
+  }
+
+  function updateBullet(jdx, sidx, bidx, value) {
+    const next = structuredClone(state.present);
+    next.jobs[jdx].sections[sidx].bullets[bidx] = value;
+    setState(next);
+  }
+
+  function removeBullet(jdx, sidx, bidx) {
+    const next = structuredClone(state.present);
+    next.jobs[jdx].sections[sidx].bullets.splice(bidx, 1);
+    setState(next);
+  }
+
+  // ---- Photo helpers ----
+  function updatePhoto(field, value){
+    const next = structuredClone(state.present);
+    next.photo = { ...(next.photo || {}), [field]: value };
+    setState(next);
+  }
+  function handlePhotoFile(e){
+    const file = e.target.files?.[0];
+    if(!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (JPG, PNG, GIF, etc.)');
+      e.target.value = '';
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error('Image must be less than 5MB');
+      e.target.value = '';
+      return;
+    }
+    
+    // Validate dimensions
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      
+      if (img.width < 100 || img.height < 100) {
+        toast.error('Image must be at least 100x100 pixels');
+        e.target.value = '';
+        return;
+      }
+      
+      if (img.width > 4000 || img.height > 4000) {
+        toast.error('Image must be less than 4000x4000 pixels');
+        e.target.value = '';
+        return;
+      }
+      
+      // If all validations pass, read the file
+      const reader = new FileReader();
+      reader.onload = () => { 
+        updatePhoto('dataUrl', reader.result);
+        toast.success('Photo uploaded successfully!');
+      };
+      reader.readAsDataURL(file);
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      toast.error('Failed to load image. Please try another file.');
+      e.target.value = '';
+    };
+    
+    img.src = objectUrl;
+  }
+
+  function loadSample() { 
+    setState(sampleFromYourPDF());
+    toast.success("Sample resume loaded!");
+  }
+
+  function exportJSON() {
+    const blob = new Blob([JSON.stringify(state.present, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "resume.json"; a.click(); URL.revokeObjectURL(url);
+    toast.success("Resume exported as JSON!");
+  }
+
+  function importJSONFile(e) {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { 
+        setState(safeHydrate(JSON.parse(reader.result)));
+        toast.success("Resume imported successfully!");
+      }
+      catch (err) { 
+        toast.error("Invalid JSON: " + err.message);
+      }
+      finally { e.target.value = ""; }
+    };
+    reader.readAsText(file);
+  }
+
+  async function printPDF() {
+    try {
+      setExporting(true);
+      toast.info("Generating PDF...");
+      
+      const originalSheet = document.querySelector(".sheet");
+      if (!originalSheet) throw new Error("Could not find .sheet element");
+
+      // Hide page break indicator
+      const pageBreakIndicator = document.querySelector(".page-break-indicator");
+      if (pageBreakIndicator) {
+        pageBreakIndicator.style.display = 'none';
+      }
+
+      await document.fonts?.ready;
+      
+      // Get paper dimensions
+      const pdfFormat = paperSize === 'a4' ? 'a4' : 
+                        paperSize === 'letter' ? [215.9, 279.4] : 
+                        [215.9, 355.6];
+      
+      const pdf = new jsPDF("p", "mm", pdfFormat);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Convert mm to pixels (96 DPI standard)
+      const mmToPx = 3.7795275591; // 96 DPI conversion
+      const pageHeightPx = pageHeight * mmToPx;
+
+      // Clone the original sheet for manipulation
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '0';
+      document.body.appendChild(tempContainer);
+
+      // Create page 1 (with sidebar and content)
+      const page1 = originalSheet.cloneNode(true);
+      page1.style.width = `${currentPaper.width}mm`;
+      page1.style.height = `${currentPaper.height}mm`;
+      page1.style.minHeight = `${currentPaper.height}mm`;
+      page1.style.maxHeight = `${currentPaper.height}mm`;
+      page1.style.overflow = 'hidden';
+      page1.style.fontSize = `${fontSize}%`;
+      page1.style.background = 'white';
+      
+      // Apply padding to cloned elements
+      const page1Aside = page1.querySelector('aside');
+      const page1Main = page1.querySelector('main');
+      if (page1Aside) page1Aside.style.padding = `${contentPadding}px ${contentPadding * 0.667}px`;
+      if (page1Main) page1Main.style.padding = `${contentPadding}px`;
+      
+      // Remove page break indicator from clone
+      const clonedIndicator = page1.querySelector('.page-break-indicator');
+      if (clonedIndicator) clonedIndicator.remove();
+      
+      tempContainer.appendChild(page1);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture page 1
+      const canvas1 = await html2canvas(page1, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        width: page1.offsetWidth,
+        height: page1.offsetHeight
+      });
+
+      // Add page 1 to PDF
+      const imgData1 = canvas1.toDataURL("image/png");
+      pdf.addImage(imgData1, "PNG", 0, 0, pageWidth, pageHeight);
+
+      // Check if we need page 2+ by measuring main content height
+      const mainContent = originalSheet.querySelector('main');
+      if (mainContent && mainContent.scrollHeight > pageHeightPx) {
+        // Calculate how many additional pages needed
+        const remainingHeight = mainContent.scrollHeight - pageHeightPx;
+        const additionalPages = Math.ceil(remainingHeight / pageHeightPx);
+
+        for (let i = 0; i < additionalPages; i++) {
+          // Clone the ENTIRE sheet structure to maintain exact layout
+          const pageN = originalSheet.cloneNode(true);
+          pageN.style.width = `${currentPaper.width}mm`;
+          pageN.style.height = `${currentPaper.height}mm`;
+          pageN.style.minHeight = `${currentPaper.height}mm`;
+          pageN.style.maxHeight = `${currentPaper.height}mm`;
+          pageN.style.overflow = 'hidden';
+          pageN.style.fontSize = `${fontSize}%`;
+          pageN.style.background = 'white';
+
+          // Get aside and main from the cloned page
+          const pageNAside = pageN.querySelector('aside');
+          const pageNMain = pageN.querySelector('main');
+          
+          // Empty the sidebar but keep it to maintain layout/margins
+          if (pageNAside) {
+            pageNAside.innerHTML = '';
+            pageNAside.style.padding = `${contentPadding}px ${contentPadding * 0.667}px`;
+          }
+          
+          // Shift main content up to show next portion
+          if (pageNMain) {
+            pageNMain.style.padding = `${contentPadding}px`;
+            pageNMain.style.marginTop = `-${pageHeightPx * (i + 1)}px`;
+          }
+          
+          // Remove page break indicator
+          const pageNIndicator = pageN.querySelector('.page-break-indicator');
+          if (pageNIndicator) pageNIndicator.remove();
+
+          tempContainer.appendChild(pageN);
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Capture page N
+          const canvasN = await html2canvas(pageN, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            width: pageN.offsetWidth,
+            height: pageN.offsetHeight
+          });
+
+          // Add to PDF
+          pdf.addPage();
+          const imgDataN = canvasN.toDataURL("image/png");
+          pdf.addImage(imgDataN, "PNG", 0, 0, pageWidth, pageHeight);
+
+          pageN.remove();
+        }
+      }
+
+      // Cleanup
+      tempContainer.remove();
+      
+      // Show page break indicator again
+      if (pageBreakIndicator) {
+        pageBreakIndicator.style.display = '';
+      }
+
+      const filename = `${(state.present.name || "resume").replace(/\s+/g, "_")}.pdf`;
+      pdf.save(filename);
+      toast.success(`PDF exported successfully (${currentPaper.name})!`);
+    } catch (err) {
+      console.error("PDF export failed", err);
+      toast.error("PDF export failed: " + (err?.message || err));
+      
+      // Cleanup
+      const tempContainer = document.querySelector('div[style*="-9999px"]');
+      if (tempContainer) tempContainer.remove();
+      
+      const pageBreakIndicator = document.querySelector(".page-break-indicator");
+      if (pageBreakIndicator) {
+        pageBreakIndicator.style.display = '';
+      }
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Print styles (still here if someone uses Ctrl+P) */}
+      <style>{`
+        @page { size: A4; margin: 12mm }
+        @media print { 
+          .editor { display: none !important; }
+          .sheet { box-shadow: none !important; border: none !important; }
+          body { background: transparent !important; }
+          .page-break-indicator { display: none !important; }
+        }
+        
+        /* Better word wrapping for long text */
+        .overflow-wrap-anywhere {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          hyphens: auto;
+        }
+        
+        /* Ensure resume content doesn't overflow */
+        .sheet * {
+          max-width: 100%;
+        }
+      `}</style>
+
+      <div className="mx-auto max-w-[1480px] p-4 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
+        {/* Editor */}
+        <div className="editor rounded-2xl border bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between border-b p-3">
+            <div>
+              <h2 className="text-sm font-bold tracking-wide">Resume Builder</h2>
+              {lastSaved && (
+                <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                  <Save size={12} />
+                  Saved {lastSaved.toLocaleTimeString()}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                disabled={!canUndo} 
+                className={`px-3 py-2 rounded-xl border text-sm ${!canUndo ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`} 
+                onClick={undo}
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 className="inline -mt-1" size={16}/>
+              </button>
+              <button 
+                disabled={!canRedo} 
+                className={`px-3 py-2 rounded-xl border text-sm ${!canRedo ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`} 
+                onClick={redo}
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 className="inline -mt-1" size={16}/>
+              </button>
+              <div className="border-l mx-1" />
+              <button 
+                className="px-3 py-2 rounded-xl border text-sm hover:bg-slate-50 transition-colors active:scale-95" 
+                onClick={loadSample}
+                title="Load sample resume data"
+              >
+                Load Sample
+              </button>
+              <button 
+                className="px-3 py-2 rounded-xl border text-sm hover:bg-slate-50 transition-colors active:scale-95" 
+                onClick={exportJSON}
+                title="Export resume as JSON file"
+              >
+                <Download className="inline -mt-1 mr-1" size={16}/>Export JSON
+              </button>
+              <label className="px-3 py-2 rounded-xl border text-sm cursor-pointer hover:bg-slate-50 transition-colors active:scale-95" title="Import resume from JSON file">
+                <Upload className="inline -mt-1 mr-1" size={16}/>Import JSON
+                <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={importJSONFile} />
+              </label>
+              <button 
+                disabled={exporting} 
+                className={`px-3 py-2 rounded-xl text-sm transition-all ${exporting ? 'bg-slate-300 text-slate-600 cursor-not-allowed' : 'bg-teal-500 text-white hover:bg-teal-600 active:scale-95'}`} 
+                onClick={printPDF}
+                title={`Export resume as PDF (${currentPaper.name})`}
+              >
+                <Printer className="inline -mt-1 mr-1" size={16}/>{exporting ? 'Exporting…' : 'Export to PDF'}
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 space-y-4">
+            <Section title="Identity">
+              <Label>Full name</Label>
+              <Input value={state.present.name} onChange={e=>update("name", e.target.value)} placeholder="Your full name" maxLength={100}/>
+              <div className="text-xs text-slate-500 mt-1">{state.present.name?.length || 0}/100 characters</div>
+              
+              <Label>Headline / Title</Label>
+              <Input value={state.present.headline} onChange={e=>update("headline", e.target.value)} placeholder="e.g., Data & AI Engineer" maxLength={100}/>
+              <div className="text-xs text-slate-500 mt-1">{state.present.headline?.length || 0}/100 characters</div>
+              
+              <Label>Profile summary</Label>
+              <Textarea value={state.present.summary} onChange={e=>update("summary", e.target.value)} placeholder="2–3 sentences that sell your value" maxLength={500}/>
+              <div className="text-xs text-slate-500 mt-1">{state.present.summary?.length || 0}/500 characters</div>
+            </Section>
+
+            <Section title="Photo (optional)">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={!!state.present.photo?.enabled} onChange={e=>updatePhoto('enabled', e.target.checked)} />
+                <Label className="!mb-0">Show photo</Label>
+              </div>
+              {state.present.photo?.enabled ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <Label>Upload image</Label>
+                    <input type="file" accept="image/*" onChange={handlePhotoFile} className="block w-full text-sm" />
+                  </div>
+                  <div>
+                    <Label>OR Image URL</Label>
+                    <Input value={state.present.photo?.url || ""} onChange={e=>updatePhoto('url', e.target.value)} placeholder="https://example.com/photo.jpg" />
+                  </div>
+                </div>
+              ) : null}
+            </Section>
+
+            <Section title="Contact & Links">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label>Location</Label>
+                  <Input value={state.present.contact.location} onChange={e=>update("contact.location", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Phone</Label>
+                  <Input value={state.present.contact.phone} onChange={e=>update("contact.phone", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Email</Label>
+                  <Input value={state.present.contact.email} onChange={e=>update("contact.email", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-2">
+                {state.present.links.map((l, idx) => (
+                  <Row key={idx} title="Link" onRemove={() => removeRow("links", idx)}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Label</Label>
+                        <Input value={l.label} onChange={e => {
+                          const next = structuredClone(state.present);
+                          next.links[idx].label = e.target.value;
+                          setState(next);
+                        }}/>
+                      </div>
+                      <div>
+                        <Label>URL</Label>
+                        <Input value={l.url} onChange={e => {
+                          const next = structuredClone(state.present);
+                          next.links[idx].url = e.target.value;
+                          setState(next);
+                        }}/>
+                      </div>
+                    </div>
+                  </Row>
+                ))}
+                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addRow("links", {label:"LinkedIn", url:""})}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add link</button>
+              </div>
+            </Section>
+
+            <Section title="Skills (comma-separated)">
+              <Input value={state.present.skills.join(", ")} onChange={e=>update("skills", e.target.value.split(",").map(s=>s.trim()).filter(Boolean))} placeholder="e.g., ETL, Databricks, Python, Spark"/>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {asChips.map((s, i) => (
+                  <span key={i} className="px-3 py-1 rounded-full border text-xs bg-slate-50">{s}</span>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Use commas to separate skills. They’ll render as tidy pills.</p>
+            </Section>
+
+            <Section title="Employment">
+              <div className="space-y-2">
+                {state.present.jobs.map((job, jdx) => (
+                  <Row key={jdx} title="Role" onRemove={() => removeJob(jdx)}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Title / Role</Label>
+                        <Input value={job.role} onChange={e=>updateJob(jdx, "role", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Company</Label>
+                        <Input value={job.company} onChange={e=>updateJob(jdx, "company", e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                      <div>
+                        <Label>Location</Label>
+                        <Input value={job.location} onChange={e=>updateJob(jdx, "location", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Start (e.g., Jan 2024)</Label>
+                        <Input value={job.start} onChange={e=>updateJob(jdx, "start", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>End (e.g., Present)</Label>
+                        <Input value={job.end} onChange={e=>updateJob(jdx, "end", e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      <h4 className="text-xs font-semibold tracking-wider text-slate-600 uppercase">Sub-sections (project areas)</h4>
+                      {job.sections.map((sub, sidx) => (
+                        <div key={sidx} className="rounded-lg border p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="text-sm font-semibold">Sub-section</h5>
+                            <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>removeJobSection(jdx, sidx)}><Trash2 className="inline -mt-0.5 mr-1" size={14}/>Remove</button>
+                          </div>
+                          <Label>Title</Label>
+                          <Input value={sub.title} onChange={e=>updateJobSection(jdx, sidx, "title", e.target.value)} />
+                          <div className="mt-2 space-y-2">
+                            {(sub.bullets || []).map((b, bidx) => (
+                              <div key={bidx} className="grid grid-cols-[1fr_auto] gap-2 items-start">
+                                <Textarea value={b} onChange={e=>updateBullet(jdx, sidx, bidx, e.target.value)} />
+                                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>removeBullet(jdx, sidx, bidx)}>Remove</button>
+                              </div>
+                            ))}
+                            <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addBullet(jdx, sidx)}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add bullet</button>
+                          </div>
+                        </div>
+                      ))}
+                      <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addJobSection(jdx)}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add sub-section</button>
+                    </div>
+                  </Row>
+                ))}
+                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addRow("jobs", { role:"", company:"", location:"", start:"", end:"", sections:[] })}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add role</button>
+              </div>
+            </Section>
+
+            <Section title="Projects">
+              <div className="space-y-2">
+                {state.present.projects.map((proj, idx) => (
+                  <Row key={idx} title="Project" onRemove={() => removeRow("projects", idx)}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Project Title</Label>
+                        <Input value={proj.title} onChange={e=>{ const next = structuredClone(state.present); next.projects[idx].title = e.target.value; setState(next); }} maxLength={100}/>
+                      </div>
+                      <div>
+                        <Label>Project URL (optional)</Label>
+                        <Input value={proj.url} onChange={e=>{ const next = structuredClone(state.present); next.projects[idx].url = e.target.value; setState(next); }} placeholder="https://github.com/..."/>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <Label>Start Date</Label>
+                        <Input value={proj.start} onChange={e=>{ const next = structuredClone(state.present); next.projects[idx].start = e.target.value; setState(next); }} placeholder="e.g., Jan 2024"/>
+                      </div>
+                      <div>
+                        <Label>End Date</Label>
+                        <Input value={proj.end} onChange={e=>{ const next = structuredClone(state.present); next.projects[idx].end = e.target.value; setState(next); }} placeholder="e.g., Present"/>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <Label>Description</Label>
+                      <Textarea value={proj.description} onChange={e=>{ const next = structuredClone(state.present); next.projects[idx].description = e.target.value; setState(next); }} placeholder="Brief description of the project" maxLength={300}/>
+                      <div className="text-xs text-slate-500 mt-1">{proj.description?.length || 0}/300 characters</div>
+                    </div>
+                    <div className="mt-3">
+                      <Label>Technologies Used</Label>
+                      <Input value={proj.tech} onChange={e=>{ const next = structuredClone(state.present); next.projects[idx].tech = e.target.value; setState(next); }} placeholder="e.g., React, Node.js, MongoDB" maxLength={150}/>
+                    </div>
+                  </Row>
+                ))}
+                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addRow("projects", {title:"", description:"", tech:"", start:"", end:"", url:""})}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add project</button>
+              </div>
+            </Section>
+
+            <Section title="Certifications">
+              <div className="space-y-2">
+                {state.present.certs.map((c, idx) => (
+                  <Row key={idx} title="Certification" onRemove={() => removeRow("certs", idx)}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <Label>Title</Label>
+                        <Input value={c.title} onChange={e=>{ const next = structuredClone(state.present); next.certs[idx].title = e.target.value; setState(next); }} />
+                      </div>
+                      <div>
+                        <Label>Issuer</Label>
+                        <Input value={c.org} onChange={e=>{ const next = structuredClone(state.present); next.certs[idx].org = e.target.value; setState(next); }} />
+                      </div>
+                      <div>
+                        <Label>Date/Year</Label>
+                        <Input value={c.when} onChange={e=>{ const next = structuredClone(state.present); next.certs[idx].when = e.target.value; setState(next); }} />
+                      </div>
+                    </div>
+                  </Row>
+                ))}
+                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addRow("certs", {title:"", org:"", when:""})}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add certification</button>
+              </div>
+            </Section>
+
+            <Section title="Education">
+              <div className="space-y-2">
+                {state.present.edus.map((ed, idx) => (
+                  <Row key={idx} title="Education" onRemove={() => removeRow("edus", idx)}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Degree / Program</Label>
+                        <Input value={ed.degree} onChange={e=>{ const next = structuredClone(state.present); next.edus[idx].degree = e.target.value; setState(next); }} />
+                      </div>
+                      <div>
+                        <Label>Institution</Label>
+                        <Input value={ed.school} onChange={e=>{ const next = structuredClone(state.present); next.edus[idx].school = e.target.value; setState(next); }} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Dates (e.g., 2018 — 2021)</Label>
+                      <Input value={ed.when} onChange={e=>{ const next = structuredClone(state.present); next.edus[idx].when = e.target.value; setState(next); }} />
+                    </div>
+                  </Row>
+                ))}
+                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addRow("edus", {degree:"", school:"", when:""})}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add education</button>
+              </div>
+            </Section>
+
+            <Section title="Languages">
+              <div className="space-y-2">
+                {state.present.languages.map((lang, idx) => (
+                  <Row key={idx} title="Language" onRemove={() => removeRow("languages", idx)}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Language</Label>
+                        <Input value={lang.name} onChange={e=>{ const next = structuredClone(state.present); next.languages[idx].name = e.target.value; setState(next); }} placeholder="e.g., English"/>
+                      </div>
+                      <div>
+                        <Label>Proficiency Level</Label>
+                        <Input value={lang.level} onChange={e=>{ const next = structuredClone(state.present); next.languages[idx].level = e.target.value; setState(next); }} placeholder="e.g., Native, Fluent, Intermediate"/>
+                      </div>
+                    </div>
+                  </Row>
+                ))}
+                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addRow("languages", {name:"", level:""})}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add language</button>
+              </div>
+            </Section>
+
+            <Section title="Publications">
+              <div className="space-y-2">
+                {state.present.publications.map((pub, idx) => (
+                  <Row key={idx} title="Publication" onRemove={() => removeRow("publications", idx)}>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <Label>Title</Label>
+                        <Input value={pub.title} onChange={e=>{ const next = structuredClone(state.present); next.publications[idx].title = e.target.value; setState(next); }} placeholder="Paper or article title" maxLength={150}/>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label>Publisher/Venue</Label>
+                          <Input value={pub.publisher} onChange={e=>{ const next = structuredClone(state.present); next.publications[idx].publisher = e.target.value; setState(next); }} placeholder="Journal, conference, etc."/>
+                        </div>
+                        <div>
+                          <Label>Date</Label>
+                          <Input value={pub.when} onChange={e=>{ const next = structuredClone(state.present); next.publications[idx].when = e.target.value; setState(next); }} placeholder="e.g., 2024"/>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>URL (optional)</Label>
+                        <Input value={pub.url} onChange={e=>{ const next = structuredClone(state.present); next.publications[idx].url = e.target.value; setState(next); }} placeholder="https://doi.org/..."/>
+                      </div>
+                    </div>
+                  </Row>
+                ))}
+                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addRow("publications", {title:"", publisher:"", when:"", url:""})}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add publication</button>
+              </div>
+            </Section>
+
+            <Section title="Awards & Honors">
+              <div className="space-y-2">
+                {state.present.awards.map((award, idx) => (
+                  <Row key={idx} title="Award" onRemove={() => removeRow("awards", idx)}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <Label>Award Title</Label>
+                        <Input value={award.title} onChange={e=>{ const next = structuredClone(state.present); next.awards[idx].title = e.target.value; setState(next); }} maxLength={100}/>
+                      </div>
+                      <div>
+                        <Label>Issuing Organization</Label>
+                        <Input value={award.issuer} onChange={e=>{ const next = structuredClone(state.present); next.awards[idx].issuer = e.target.value; setState(next); }}/>
+                      </div>
+                      <div>
+                        <Label>Date/Year</Label>
+                        <Input value={award.when} onChange={e=>{ const next = structuredClone(state.present); next.awards[idx].when = e.target.value; setState(next); }}/>
+                      </div>
+                    </div>
+                  </Row>
+                ))}
+                <button className="px-2 py-1 text-xs rounded-lg border" onClick={()=>addRow("awards", {title:"", issuer:"", when:""})}><Plus className="inline -mt-0.5 mr-1" size={14}/>Add award</button>
+              </div>
+            </Section>
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+          <div className="border-b p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h2 className="text-sm font-bold tracking-wide">Live Preview</h2>
+              <span className="text-xs text-slate-500">Auto-updates as you type</span>
+            </div>
+            
+            {/* Layout Controls */}
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <label className="text-slate-600 font-medium">Paper Size:</label>
+                <select 
+                  value={paperSize} 
+                  onChange={(e) => {
+                    setPaperSize(e.target.value);
+                    toast.success(`Preview size changed to ${paperSizes[e.target.value].name}`);
+                  }}
+                  className="text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-teal-400"
+                >
+                  <option value="a4">A4 (210×297mm)</option>
+                  <option value="letter">Letter (8.5×11")</option>
+                  <option value="legal">Legal (8.5×14")</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <label className="text-slate-600 font-medium">Margins:</label>
+                <input 
+                  type="range" 
+                  min="24" 
+                  max="72" 
+                  step="4"
+                  value={contentPadding}
+                  onChange={(e) => setContentPadding(Number(e.target.value))}
+                  className="w-24"
+                  title="Adjust content margins"
+                />
+                <span className="text-slate-500 min-w-[60px]">{Math.round(contentPadding / 4)}mm</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <label className="text-slate-600 font-medium">Font Scale:</label>
+                <input 
+                  type="range" 
+                  min="75" 
+                  max="125" 
+                  step="5"
+                  value={fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="w-24"
+                  title="Adjust font size"
+                />
+                <span className="text-slate-500 min-w-[45px]">{fontSize}%</span>
+              </div>
+              
+              <button
+                className="px-2 py-1 text-xs rounded border hover:bg-slate-50 transition-colors"
+                onClick={() => {
+                  setContentPadding(48);
+                  setFontSize(100);
+                  toast.success("Layout reset to defaults");
+                }}
+                title="Reset to default layout"
+              >
+                Reset Layout
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-4 bg-slate-100">
+            <div className="sheet mx-auto border shadow-lg relative" style={{ width: `${currentPaper.width}mm`, minHeight: `${currentPaper.height}mm`, background: "white", fontSize: `${fontSize}%` }}>
+              {/* Page break indicator */}
+              <div 
+                className="page-break-indicator absolute left-0 right-0 border-b-2 border-dashed border-red-400 pointer-events-none z-10" 
+                style={{ top: `${currentPaper.height}mm` }}
+              >
+                <div className="absolute right-2 -top-3 bg-red-400 text-white text-[10px] px-2 py-0.5 rounded shadow-md">
+                  📄 Page 1 ends here
+                </div>
+              </div>
+              <div className="grid grid-cols-[30%_1fr]" style={{ minHeight: `${currentPaper.height}mm` }}>
+                <aside className="border-r" style={{ padding: `${contentPadding}px ${contentPadding * 0.667}px`, background: "linear-gradient(180deg, #f7fbfb 0%, #f0f8f9 100%)" }}>
+                  <Aside state={state.present} />
+                </aside>
+                <main style={{ padding: `${contentPadding}px` }}>
+                  <Main state={state.present} />
+                </main>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Dev sanity checks (lightweight tests) */}
+      <DevTests />
+    </div>
+  );
+}
+
+/* ========== UI Fragments ========== */
+const Section = memo(function Section({ title, children }) {
+  return (
+    <section className="rounded-xl border p-3">
+      <h3 className="text-[11px] uppercase tracking-[0.18em] text-slate-600 font-extrabold mb-2">{title}</h3>
+      {children}
+    </section>
+  );
+});
+
+const Row = memo(function Row({ title, onRemove, children }) {
+  return (
+    <div className="rounded-xl border p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-semibold">{title}</h4>
+        <button className="px-2 py-1 text-xs rounded-lg border" onClick={onRemove}><Trash2 className="inline -mt-0.5 mr-1" size={14}/>Remove</button>
+      </div>
+      {children}
+    </div>
+  );
+});
+
+function Label({ children, className = "" }) { return <label className={`block text-[12px] text-slate-600 mb-1 ${className}`}>{children}</label>; }
+
+// Enhanced Input with paste protection
+function Input(props) { 
+  const handlePaste = (e) => {
+    if (props.maxLength) {
+      const paste = e.clipboardData.getData('text');
+      const currentValue = e.target.value;
+      const selectionStart = e.target.selectionStart;
+      const selectionEnd = e.target.selectionEnd;
+      const newValue = currentValue.substring(0, selectionStart) + paste + currentValue.substring(selectionEnd);
+      
+      if (newValue.length > props.maxLength) {
+        e.preventDefault();
+        const allowedPaste = paste.substring(0, props.maxLength - (currentValue.length - (selectionEnd - selectionStart)));
+        const finalValue = currentValue.substring(0, selectionStart) + allowedPaste + currentValue.substring(selectionEnd);
+        e.target.value = finalValue;
+        if (props.onChange) {
+          props.onChange({ target: { value: finalValue } });
+        }
+        toast.warning(`Text trimmed to ${props.maxLength} characters`);
+      }
+    }
+  };
+  
+  return <input {...props} onPaste={handlePaste} className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 ${props.className||""}`} />; 
+}
+
+// Enhanced Textarea with paste protection
+function Textarea(props) { 
+  const handlePaste = (e) => {
+    if (props.maxLength) {
+      const paste = e.clipboardData.getData('text');
+      const currentValue = e.target.value;
+      const selectionStart = e.target.selectionStart;
+      const selectionEnd = e.target.selectionEnd;
+      const newValue = currentValue.substring(0, selectionStart) + paste + currentValue.substring(selectionEnd);
+      
+      if (newValue.length > props.maxLength) {
+        e.preventDefault();
+        const allowedPaste = paste.substring(0, props.maxLength - (currentValue.length - (selectionEnd - selectionStart)));
+        const finalValue = currentValue.substring(0, selectionStart) + allowedPaste + currentValue.substring(selectionEnd);
+        e.target.value = finalValue;
+        if (props.onChange) {
+          props.onChange({ target: { value: finalValue } });
+        }
+        toast.warning(`Text trimmed to ${props.maxLength} characters`);
+      }
+    }
+  };
+  
+  return <textarea {...props} onPaste={handlePaste} className={`w-full min-h-[90px] rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 ${props.className||""}`} />; 
+}
+
+const Aside = memo(function Aside({ state }) {
+  const photoSrc = state.photo?.enabled ? (state.photo?.dataUrl || state.photo?.url) : "";
+  return (
+    <div>
+      {photoSrc ? (
+        <div className="flex items-center justify-center mb-6">
+          <img src={photoSrc} alt="Profile photo" className="w-28 h-28 rounded-full object-cover border shadow-sm" />
+        </div>
+      ) : null}
+
+      <h4 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Details</h4>
+      <KV k="Location" v={formatLocation(state.contact.location)} />
+      <KV k="Phone" v={state.contact.phone} />
+      <KV k="Email" v={state.contact.email} />
+
+      {state.links?.length ? (
+        <>
+          <h4 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mt-6 mb-2">Links</h4>
+          <div className="space-y-1.5">
+            {state.links.map((l, i) => {
+              const href = normalizeUrl(l.url || "");
+              const label = cleanText(l.label || "");
+              if(!href || !label) return null;
+              return (
+                <div key={i}>
+                  <a 
+                    href={href} 
+                    target="_blank" 
+                    rel="noreferrer noopener" 
+                    className="text-[12px] text-teal-700 hover:text-teal-900 hover:underline font-medium block"
+                  >
+                    {label}
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : null}
+
+      {state.skills?.length ? (
+        <>
+          <h4 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mt-6 mb-2">Skills</h4>
+          <div className="flex flex-wrap gap-2">
+            {state.skills.map((s, i) => (
+              <span key={i} className="px-3 py-1 rounded-full border text-[11.5px] bg-slate-50">{cleanText(s)}</span>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+});
+
+const KV = memo(function KV({ k, v, href }) {
+  const text = cleanText(v);
+  if (!text) return null;
+  return (
+    <div className="text-[12px] text-slate-800 my-2">
+      <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">{k}</div>
+      <div className="break-all overflow-wrap-anywhere leading-relaxed">
+        {href ? (
+          <a href={href} target="_blank" rel="noreferrer" className="hover:underline text-teal-700">{text}</a>
+        ) : (
+          <span>{text}</span>
+        )}
+      </div>
+    </div>
+  );
+});
+
+const Main = memo(function Main({ state }) {
+  return (
+    <div>
+      <h1 className="text-3xl font-extrabold leading-tight">{cleanText(state.name) || "Your Name"}</h1>
+      {state.headline ? <div className="font-bold text-teal-900 mt-1">{cleanText(state.headline)}</div> : null}
+      <div className="h-1.5 w-16 bg-teal-500 rounded-full my-4" />
+
+      {state.summary ? (
+        <section className="mb-2">
+          <h3 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Profile</h3>
+          <p className="text-[13px] leading-relaxed text-slate-800">{cleanText(state.summary)}</p>
+        </section>
+      ) : null}
+
+      {state.jobs?.length ? (
+        <section className="mt-4">
+          <h3 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Employment History</h3>
+          {state.jobs.map((job, i) => (
+            <div key={i} className="mb-3">
+              <div className="text-sm font-bold">{cleanText(job.role)}</div>
+              <div className="text-slate-500 text-sm font-semibold">{[cleanText(job.company), cleanText(job.location)].filter(Boolean).join(", ")}</div>
+              <div className="text-slate-500 text-xs mt-0.5">{[cleanText(job.start), cleanText(job.end)].filter(Boolean).join(" — ")}</div>
+
+              {(job.sections || []).map((s, j) => (
+                <div key={j} className="mt-2">
+                  {s.title ? <div className="font-semibold text-slate-900 mt-1">{cleanText(s.title)}</div> : null}
+                  {(s.bullets || []).filter(b=>b && b.trim()).map((b, k) => (
+                    <div key={k} className="grid grid-cols-[12px_1fr] gap-2 text-[12.5px] my-1">
+                      <span className="text-teal-900">•</span>
+                      <span>{cleanText(b)}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {state.projects?.length ? (
+        <section className="mt-4">
+          <h3 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Projects</h3>
+          {state.projects.map((proj, i) => (
+            <div key={i} className="mb-3">
+              <div className="text-sm font-bold">
+                {cleanText(proj.title)}
+                {proj.url && normalizeUrl(proj.url) ? (
+                  <a href={normalizeUrl(proj.url)} target="_blank" rel="noreferrer noopener" className="ml-2 text-teal-700 text-xs hover:underline">🔗</a>
+                ) : null}
+              </div>
+              <div className="text-slate-500 text-xs mt-0.5">{[cleanText(proj.start), cleanText(proj.end)].filter(Boolean).join(" — ")}</div>
+              {proj.description ? <p className="text-[12.5px] mt-1 text-slate-800">{cleanText(proj.description)}</p> : null}
+              {proj.tech ? <div className="text-[11.5px] mt-1 text-slate-600"><span className="font-semibold">Tech:</span> {cleanText(proj.tech)}</div> : null}
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {state.certs?.length ? (
+        <section className="mt-4">
+          <h3 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Certifications</h3>
+          {state.certs.map((c, i) => (
+            <div key={i} className="text-[12.5px] my-1">
+              <span className="font-semibold">{cleanText(c.title)}</span> — {cleanText(c.org)} {c.when ? <span className="text-slate-500">({cleanText(c.when)})</span> : null}
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {state.edus?.length ? (
+        <section className="mt-4">
+          <h3 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Education</h3>
+          {state.edus.map((ed, i) => (
+            <div key={i} className="text-[12.5px] my-1">
+              <span className="font-semibold">{cleanText(ed.degree)}</span> — {cleanText(ed.school)} {ed.when ? <span className="text-slate-500">({cleanText(ed.when)})</span> : null}
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {state.languages?.length ? (
+        <section className="mt-4">
+          <h3 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Languages</h3>
+          {state.languages.map((lang, i) => (
+            <div key={i} className="text-[12.5px] my-1">
+              <span className="font-semibold">{cleanText(lang.name)}</span> {lang.level ? <span className="text-slate-500">— {cleanText(lang.level)}</span> : null}
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {state.publications?.length ? (
+        <section className="mt-4">
+          <h3 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Publications</h3>
+          {state.publications.map((pub, i) => (
+            <div key={i} className="text-[12.5px] my-1.5">
+              <div className="font-semibold">
+                {cleanText(pub.title)}
+                {pub.url && normalizeUrl(pub.url) ? (
+                  <a href={normalizeUrl(pub.url)} target="_blank" rel="noreferrer noopener" className="ml-1 text-teal-700 text-xs hover:underline">🔗</a>
+                ) : null}
+              </div>
+              <div className="text-slate-600">
+                {cleanText(pub.publisher)} {pub.when ? <span className="text-slate-500">({cleanText(pub.when)})</span> : null}
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {state.awards?.length ? (
+        <section className="mt-4">
+          <h3 className="text-[12px] uppercase tracking-[0.18em] text-teal-900 font-extrabold mb-2">Awards & Honors</h3>
+          {state.awards.map((award, i) => (
+            <div key={i} className="text-[12.5px] my-1">
+              <span className="font-semibold">{cleanText(award.title)}</span> — {cleanText(award.issuer)} {award.when ? <span className="text-slate-500">({cleanText(award.when)})</span> : null}
+            </div>
+          ))}
+        </section>
+      ) : null}
+    </div>
+  );
+});
+
+/* ========== Data Helpers & Tests ========== */
+function cleanText(s){ 
+  const text = (s ?? "").toString().replace(/\s+/g, " ").trim();
+  // Sanitize to prevent XSS
+  return DOMPurify.sanitize(text, { ALLOWED_TAGS: [] }); // Strip all HTML tags
+}
+function normalizeUrl(u){
+  const s = cleanText(u);
+  if(!s) return "";
+  
+  // Add https:// if no protocol
+  let url = s;
+  if(!/^https?:\/\//i.test(s)) {
+    url = "https://" + s;
+  }
+  
+  // Validate URL
+  try {
+    const parsed = new URL(url);
+    // Only allow http and https protocols (block javascript:, data:, etc.)
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      console.warn('Invalid URL protocol:', parsed.protocol);
+      return "";
+    }
+    return parsed.href;
+  } catch (e) {
+    console.warn('Invalid URL:', s);
+    return "";
+  }
+}
+
+function formatLocation(s){
+  const t = cleanText(s);
+  if(!t) return "";
+  let x = t.replace(/\s*,\s*/g, ", ");
+  x = x.replace(/\s{2,}/g, " ");
+  x = x.replace(/,+/g, ",");
+  x = x.replace(/,\s*$/, "");
+  return x;
+}
+
+function blankState() {
+  return {
+    name: "",
+    headline: "",
+    summary: "",
+    contact: { location: "", phone: "", email: "" },
+    links: [],
+    skills: [],
+    jobs: [],
+    projects: [],
+    certs: [],
+    edus: [],
+    languages: [],
+    publications: [],
+    awards: [],
+    photo: { enabled: false, url: "", dataUrl: "" },
+  };
+}
+
+function safeHydrate(data) {
+  // Keep only recognized keys/shape
+  const base = blankState();
+  const next = { ...base, ...data };
+  next.contact = { ...base.contact, ...(data.contact || {}) };
+  next.links = Array.isArray(data.links) ? data.links.map(x => ({ label: x.label || "", url: x.url || "" })) : [];
+  next.skills = Array.isArray(data.skills) ? data.skills.filter(Boolean) : [];
+  next.jobs = Array.isArray(data.jobs) ? data.jobs.map(j => ({
+    role: j.role || "", company: j.company || "", location: j.location || "",
+    start: j.start || "", end: j.end || "",
+    sections: Array.isArray(j.sections) ? j.sections.map(s => ({ title: s.title || "", bullets: Array.isArray(s.bullets) ? s.bullets : [] })) : []
+  })) : [];
+  next.projects = Array.isArray(data.projects) ? data.projects.map(p => ({ 
+    title: p.title || "", description: p.description || "", tech: p.tech || "", 
+    start: p.start || "", end: p.end || "", url: p.url || "" 
+  })) : [];
+  next.certs = Array.isArray(data.certs) ? data.certs.map(c => ({ title: c.title || "", org: c.org || "", when: c.when || "" })) : [];
+  next.edus = Array.isArray(data.edus) ? data.edus.map(ed => ({ degree: ed.degree || "", school: ed.school || "", when: ed.when || "" })) : [];
+  next.languages = Array.isArray(data.languages) ? data.languages.map(l => ({ name: l.name || "", level: l.level || "" })) : [];
+  next.publications = Array.isArray(data.publications) ? data.publications.map(p => ({ 
+    title: p.title || "", publisher: p.publisher || "", when: p.when || "", url: p.url || "" 
+  })) : [];
+  next.awards = Array.isArray(data.awards) ? data.awards.map(a => ({ title: a.title || "", issuer: a.issuer || "", when: a.when || "" })) : [];
+  next.photo = {
+    enabled: !!(data.photo && data.photo.enabled),
+    url: (data.photo?.url || "").toString().trim(),
+    dataUrl: data.photo?.dataUrl || "",
+  };
+  return next;
+}
+
+function sampleFromYourPDF() {
+  // Prefill using details from your uploaded resume (you can edit freely).
+  return {
+    name: "Arudchayan Pirabaharan",
+    headline: "Data & AI Engineer",
+    summary: "Dynamic Data & AI Engineer with experience in enterprise-grade modern data platforms. Proficient in ELT/ETL, DataOps, and data science to deliver scalable solutions. Adept at transforming complex requirements into business impact.",
+    contact: { location: "Colombo 15, Sri Lanka", phone: "+94 71 209 9432", email: "arudchayan01@gmail.com" },
+    links: [{ label: "LinkedIn", url: "https://www.linkedin.com/in/arudchayan-pirabaharan-1b9002216/" }],
+    skills: [
+      "ETL","DataOps","Databricks","Data Factory","Python","Spark","Synapse Analytics","T-SQL","Power BI",
+      "SQL","NoSQL","KQL","Vector DBs","DW","BI","MDP","Architectural Optimization","Data Maturity Assessment",
+      "Azure","OCI","GCP"
+    ],
+    jobs: [
+      {
+        role: "Data Engineer",
+        company: "⭕️Nimbus",
+        location: "Warwick, Warwickshire (Remote)",
+        start: "Feb 2025",
+        end: "Present",
+        sections: [
+          { title: "Nimbus Property Data Platform", bullets: [
+            "Learnt the tech behind prop tech, faciliating various data operations from source to intelligence.",
+            "Completed a POC of the existing platform on Microsoft Fabric, integrating with various geospatial tools and data.",
+            "Used Spark Jobs to optimize geo spatial processing to acheive better data quality and processing speed.",
+            "Worked on V2 of the platform as a major contributor, implementing many architectural improvements",
+            "Contributed heavily to a complete shift from Azure to GCP, ensuring seamless migration and maintaining functionality."
+          ]},
+        ]
+      },
+      {
+        role: "Data & AI Engineer",
+        company: "Creative Software",
+        location: "Colombo",
+        start: "Jan 2024",
+        end: "Feb 2025",
+        sections: [
+          { title: "Reporting Platform for a Global Financial Services Company", bullets: [
+            "Led design and implementation of a modern data platform on Azure.",
+            "Built ELT to process delta data post end-of-day operations.",
+            "Used Azure Synapse (PySpark in Notebooks, T-SQL in Dedicated SQL pool) to load EDW for reporting.",
+            "Automated delta extraction with PowerShell via VMs; event triggers via Azure Functions.",
+            "End-to-end orchestration in Synapse Pipelines; CI/CD with Azure DevOps; reporting with Power BI."
+          ]},
+          { title: "Modern Data Platform for a Leading Food & Beverage Company", bullets: [
+            "Implemented ELT for ERP and ancillary systems.",
+            "Used Azure Databricks (PySpark) to build a Data Lakehouse for financial reporting.",
+            "Power BI dashboards; orchestration via Synapse Pipelines; CI/CD with Azure DevOps."
+          ]},
+          { title: "Generative AI-Powered Data Platform", bullets: [
+            "Ingested structured/unstructured enterprise data for search, analysis, content creation.",
+            "Azure + OpenAI Studio for LLM inference; Flask API + React UI; Microsoft Graph for integration.",
+            "Also validated a POC on Oracle Cloud Infrastructure."
+          ]}
+        ]
+      },
+      {
+        role: "Intern Data & AI Engineer",
+        company: "Creative Software",
+        location: "Colombo",
+        start: "Dec 2022",
+        end: "Jan 2024",
+        sections: [
+          { title: "", bullets: [
+            "",
+            "",
+            ""
+          ]}
+        ]
+      },
+      {
+        role: "Data/Research Engineer (Freelancing)",
+        company: "",
+        location: "Colombo",
+        start: "Aug 2021",
+        end: "Present",
+        sections: []
+      }
+    ],
+    projects: [
+      { 
+        title: "Real-time Data Pipeline Optimization Tool", 
+        description: "Built a performance monitoring tool for Databricks pipelines with automatic bottleneck detection and recommendation engine.",
+        tech: "Python, Databricks, Apache Spark, Power BI",
+        start: "Mar 2024",
+        end: "Aug 2024",
+        url: ""
+      }
+    ],
+    certs: [
+      { title: "Microsoft Certified: Azure AI Engineer Associate", org: "Microsoft", when: "Jun 2025" },
+      { title: "Oracle AI Vector Search Certified Professional", org: "Microsoft", when: "March 2025" },
+      { title: "Microsoft Certified: Fabric Data Engineer Associate", org: "Microsoft", when: "Sep 2024" },
+      { title: "Oracle Cloud Infrastructure 2024 Generative AI Certified Professional", org: "Oracle", when: "Jul 2024" },
+      { title: "AI/ML in Precision Medicine", org: "Stanford University School of Medicine", when: "May 2024" },
+      { title: "Data Science in Precision Medicine and Cloud Computing", org: "Stanford University School of Medicine", when: "May 2024" },
+      { title: "Microsoft Certified: Azure Data Engineer Associate", org: "Microsoft", when: "Mar 2023" },
+      { title: "Microsoft Certified: Azure Data Fundamentals", org: "Microsoft", when: "Dec 2022" },
+      { title: "Microsoft Certified: Azure Fundamentals", org: "Microsoft", when: "Dec 2022" }
+    ],
+    edus: [
+      { degree: "BSc (Hons) Information Technology (Data Science)", school: "Sri Lanka Institute of Information Technology, Colombo", when: "Jun 2021 — Jun 2025" },
+      { degree: "Professional Graduate Diploma - HEQ", school: "British Computer Society (BCS), UK", when: "2018 — 2021" }
+    ],
+    languages: [
+      { name: "English", level: "Fluent" },
+      { name: "Tamil", level: "Native" },
+      { name: "Sinhala", level: "Intermediate" }
+    ],
+    publications: [
+      { 
+        title: "Optimizing ETL Pipelines for Modern Data Platforms: A Case Study", 
+        publisher: "IEEE Data Engineering Bulletin",
+        when: "2024",
+        url: "https://doi.org/10.1109/example"
+      },
+      { 
+        title: "Generative AI in Enterprise Data Management", 
+        publisher: "International Conference on Data Science",
+        when: "2023",
+        url: ""
+      }
+    ],
+    awards: [
+      { title: "Best Innovation Award", issuer: "Creative Software", when: "2024" },
+      { title: "Outstanding Performance Recognition", issuer: "Creative Software", when: "2023" },
+      { title: "Academic Excellence Award", issuer: "SLIIT", when: "2022" }
+    ]
+  };
+}
+
+/* ========== LocalStorage Cleanup Helpers ========== */
+function cleanupOldDrafts() {
+  // Clean up any legacy backup keys (if you had multiple backup versions)
+  const keysToClean = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('resume_backup_') || key === 'resume_old') {
+      keysToClean.push(key);
+    }
+  }
+  keysToClean.forEach(key => localStorage.removeItem(key));
+}
+
+function clearOldResumeData() {
+  // Remove all resume-related data except the main draft
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    // Keep only resume_draft, clear everything else that might be resume-related
+    if (key && key.startsWith('resume_') && key !== 'resume_draft') {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+  
+  // If still having issues, could clear other app data (but be careful)
+  // This is a last resort - only clears non-essential items
+  if (keysToRemove.length === 0) {
+    console.warn('No old resume data to clean. localStorage might be full from other apps.');
+  }
+}
+
+/* ========== Lightweight tests (console) ========== */
+function DevTests(){
+  // Add a few assertions to catch regressions quickly
+  try {
+    console.assert(cleanText('  A   B ') === 'A B', 'cleanText basic');
+    console.assert(normalizeUrl('example.com').startsWith('https://'), 'normalizeUrl adds https');
+    console.assert(formatLocation('  Colombo  ,   Sri Lanka, ') === 'Colombo, Sri Lanka', 'formatLocation trims commas/spaces');
+  } catch(e) {
+    console.warn('Dev tests error', e);
+  }
+  return null;
+}
