@@ -87,6 +87,12 @@ export default function EmploymentSection({
                         <Textarea 
                           value={b} 
                           onChange={e => updateBullet(jdx, sidx, bidx, e.target.value)} 
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              addBullet(jdx, sidx);
+                            }
+                          }}
                         />
                         <button 
                           className="px-2 py-1 text-xs rounded-lg border" 

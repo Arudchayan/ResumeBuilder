@@ -1,10 +1,10 @@
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useMemo, useRef, useEffect, useState, lazy, Suspense } from "react";
 import { Upload, Download, Printer, Save, Undo2, Redo2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import useUndo from "use-undo";
 
 // Components
-import EditorPanelWithDnd from "./components/Editor/EditorPanelWithDnd";
+const EditorPanelWithDnd = lazy(() => import("./components/Editor/EditorPanelWithDnd"));
 import Aside from "./components/Preview/Aside";
 import Main from "./components/Preview/Main";
 import SectionVisibility from "./components/Controls/SectionVisibility";
@@ -16,6 +16,7 @@ import { exportToPDF } from "./utils/exportPdf";
 import { exportToDocx } from "./utils/exportDocx";
 import { saveToLocalStorage, loadFromLocalStorage, cleanupOldDrafts } from "./utils/localStorage";
 import { safeHydrate } from "./utils/dataHelpers";
+import { validateImportedResume } from "./utils/validation";
 
 // Constants
 import { blankState } from "./constants/defaultData";
@@ -43,6 +44,7 @@ export default function ResumeBuilder() {
   const [paperSize, setPaperSize] = useState('a4');
   const [contentPadding, setContentPadding] = useState(48);
   const [fontSize, setFontSize] = useState(100);
+  const [viewMode, setViewMode] = useState('editor'); // 'editor' | 'preview' for mobile
 
   const paperSizes = {
     a4: { width: 210, height: 297, name: 'A4 (210×297mm)' },
@@ -54,6 +56,7 @@ export default function ResumeBuilder() {
 
   // Auto-save to localStorage
   useEffect(() => {
+    if (exporting) return; // pause autosave while exporting
     const timer = setTimeout(() => {
         const toSave = { ...state.present, _savedAt: Date.now() };
       if (saveToLocalStorage('resume_draft', toSave)) {
@@ -62,7 +65,7 @@ export default function ResumeBuilder() {
       }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [state.present]);
+  }, [state.present, exporting]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -182,7 +185,10 @@ export default function ResumeBuilder() {
     const reader = new FileReader();
     reader.onload = () => {
       try { 
-        setState(safeHydrate(JSON.parse(reader.result)));
+        const json = JSON.parse(reader.result);
+        const validated = validateImportedResume(json);
+        if (!validated) return;
+        setState(safeHydrate(validated));
         toast.success("Resume imported successfully!");
       }
       catch (err) { 
@@ -293,9 +299,26 @@ export default function ResumeBuilder() {
         }
       `}</style>
 
-      <div className="mx-auto max-w-[1480px] p-4 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
+      <div className="mx-auto max-w-[1480px] p-4">
+        {/* Mobile view toggle */}
+        <div className="lg:hidden mb-3 flex items-center gap-2">
+          <button
+            className={`px-3 py-1.5 text-sm rounded border ${viewMode==='editor' ? 'bg-teal-50 border-teal-300 text-teal-700' : 'hover:bg-slate-50'}`}
+            onClick={() => setViewMode('editor')}
+          >
+            Editor
+          </button>
+          <button
+            className={`px-3 py-1.5 text-sm rounded border ${viewMode==='preview' ? 'bg-teal-50 border-teal-300 text-teal-700' : 'hover:bg-slate-50'}`}
+            onClick={() => setViewMode('preview')}
+          >
+            Preview
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
         {/* Editor */}
-        <div className="editor rounded-2xl border bg-white shadow-sm overflow-hidden">
+        <div className={`editor rounded-2xl border bg-white shadow-sm overflow-hidden ${viewMode==='preview' ? 'hidden' : ''} lg:block`}>
           <div className="flex items-center justify-between border-b p-3">
             <div>
               <h2 className="text-sm font-bold tracking-wide">Resume Builder</h2>
@@ -366,17 +389,19 @@ export default function ResumeBuilder() {
             setTheme={setTheme}
           />
 
-          <EditorPanelWithDnd 
-            state={state.present} 
-            actions={actions} 
-            sectionVisibility={sectionVisibility}
-            sectionOrder={sectionOrder}
-            setSectionOrder={setSectionOrder}
-          />
+          <Suspense fallback={<div className="p-4 text-sm text-slate-600">Loading editor…</div>}>
+            <EditorPanelWithDnd 
+              state={state.present} 
+              actions={actions} 
+              sectionVisibility={sectionVisibility}
+              sectionOrder={sectionOrder}
+              setSectionOrder={setSectionOrder}
+            />
+          </Suspense>
         </div>
 
         {/* Preview */}
-        <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+        <div className={`rounded-2xl border bg-white shadow-sm overflow-hidden ${viewMode==='editor' ? 'hidden' : ''} lg:block`}>
           <div className="border-b p-3">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-sm font-bold tracking-wide">Live Preview</h2>
@@ -463,6 +488,7 @@ export default function ResumeBuilder() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

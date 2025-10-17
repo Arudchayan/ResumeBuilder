@@ -53,6 +53,7 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
+    if (!over) return; // guard when dropped outside a droppable
 
     if (active.id !== over.id) {
       const oldIndex = sectionOrder.indexOf(active.id);

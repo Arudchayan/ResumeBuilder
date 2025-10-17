@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { validateResumeData } from "./schema";
 
 export function validateImageFile(file) {
   // Validate file type
@@ -29,4 +30,16 @@ export function validateImageDimensions(img, callback) {
   }
   
   return true;
+}
+
+export function validateImportedResume(json) {
+  const parsed = validateResumeData(json);
+  if (!parsed.success) {
+    const first = parsed.error.issues?.[0];
+    const where = first?.path?.join('.') || 'root';
+    const msg = first?.message || 'Invalid data';
+    toast.error(`Import failed at ${where}: ${msg}`);
+    return null;
+  }
+  return parsed.data;
 }

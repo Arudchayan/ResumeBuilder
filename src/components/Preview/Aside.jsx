@@ -9,7 +9,7 @@ const Aside = memo(function Aside({ state, sectionVisibility }) {
     <div>
       {photoSrc && isVisible('photo') ? (
         <div className="flex items-center justify-center mb-6">
-          <img src={photoSrc} alt="Profile photo" className="w-28 h-28 rounded-full object-cover border shadow-sm" />
+          <img src={photoSrc} alt="Profile photo" crossOrigin="anonymous" className="w-28 h-28 rounded-full object-cover border shadow-sm" />
         </div>
       ) : null}
 

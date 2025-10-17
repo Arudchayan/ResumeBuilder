@@ -149,7 +149,9 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
       pageBreakIndicator.style.display = '';
     }
 
-    const filename = `${(state.name || "resume").replace(/\s+/g, "_")}.pdf`;
+    const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+    const base = (state.name || 'resume').toString().trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_\-]/g, '');
+    const filename = `${base || 'resume'}-Resume-${dateStr}.pdf`;
     pdf.save(filename);
     
     const paperName = currentPaper.width === 210 ? 'A4' : 

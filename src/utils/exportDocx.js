@@ -388,7 +388,9 @@ export async function exportToDocx(state) {
 
     // Generate and save
     const blob = await Packer.toBlob(doc);
-    const filename = `${(state.name || 'resume').replace(/\s+/g, '_')}.docx`;
+    const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+    const base = (state.name || 'resume').toString().trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_\-]/g, '');
+    const filename = `${base || 'resume'}-Resume-${dateStr}.docx`;
     saveAs(blob, filename);
     
     toast.success("DOCX exported successfully!");
