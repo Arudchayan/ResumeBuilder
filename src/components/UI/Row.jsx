@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Trash2 } from "lucide-react";
+import PropTypes from 'prop-types';
 
 const Row = memo(function Row({ title, onRemove, children }) {
   return (
@@ -14,6 +15,12 @@ const Row = memo(function Row({ title, onRemove, children }) {
     </div>
   );
 });
+
+Row.propTypes = {
+  title: PropTypes.string.isRequired,
+  onRemove: PropTypes.func.isRequired,
+  children: PropTypes.node.isRequired,
+};
 
 export default Row;
 

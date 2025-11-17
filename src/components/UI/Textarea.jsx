@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import PropTypes from 'prop-types';
 
 export default function Textarea(props) { 
   const handlePaste = (e) => {
@@ -24,4 +25,15 @@ export default function Textarea(props) {
   
   return <textarea {...props} onPaste={handlePaste} className={`w-full min-h-[90px] rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 ${props.className||""}`} />; 
 }
+
+Textarea.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func,
+  onPaste: PropTypes.func,
+  maxLength: PropTypes.number,
+  placeholder: PropTypes.string,
+  className: PropTypes.string,
+  disabled: PropTypes.bool,
+  rows: PropTypes.number,
+};
 

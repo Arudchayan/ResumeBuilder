@@ -43,3 +43,7 @@ coverage
 .temp
 .tmp
 Arudchayan_Pirabaharan.pdf
+
+# Backup files
+*.backup
+*.bak

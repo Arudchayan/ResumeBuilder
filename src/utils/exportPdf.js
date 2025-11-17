@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "sonner";
+import { logger } from "./logger";
 
 export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
   try {
@@ -17,6 +18,17 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
     };
     
     const currentPaper = paperSizes[paperSize] || paperSizes.a4;
+
+    // Capture theme colors from CSS variables
+    const rootElement = document.querySelector('.min-h-screen') || document.body;
+    const computedStyle = getComputedStyle(rootElement);
+    const themeColors = {
+      primary: computedStyle.getPropertyValue('--theme-primary').trim() || '#14b8a6',
+      dark: computedStyle.getPropertyValue('--theme-dark').trim() || '#0f766e',
+      light: computedStyle.getPropertyValue('--theme-light').trim() || '#5eead4',
+      gradientFrom: computedStyle.getPropertyValue('--theme-gradient-from').trim() || '#f7fbfb',
+      gradientTo: computedStyle.getPropertyValue('--theme-gradient-to').trim() || '#f0f8f9',
+    };
 
     // Hide page break indicator
     const pageBreakIndicator = document.querySelector(".page-break-indicator");
@@ -38,6 +50,58 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
     // Convert mm to pixels (96 DPI standard)
     const mmToPx = 3.7795275591;
     const pageHeightPx = pageHeight * mmToPx;
+
+    // Helper function to apply theme colors to cloned element
+    const applyThemeColors = (element) => {
+      if (!element) return;
+      
+      // Apply gradient background to sidebar
+      const aside = element.querySelector('aside');
+      if (aside) {
+        aside.style.background = `linear-gradient(180deg, ${themeColors.gradientFrom} 0%, ${themeColors.gradientTo} 100%)`;
+      }
+      
+      // Get all elements and replace CSS variables in inline styles
+      const allElements = element.querySelectorAll('*');
+      allElements.forEach(el => {
+        const inlineStyle = el.getAttribute('style');
+        if (!inlineStyle) return;
+        
+        // Replace CSS variables in inline styles
+        let updatedStyle = inlineStyle;
+        
+        // Replace color: var(--theme-primary)
+        if (updatedStyle.includes("var(--theme-primary)")) {
+          updatedStyle = updatedStyle.replace(/color:\s*var\(--theme-primary\)/g, `color: ${themeColors.primary}`);
+        }
+        
+        // Replace color: var(--theme-dark)
+        if (updatedStyle.includes("var(--theme-dark)")) {
+          updatedStyle = updatedStyle.replace(/color:\s*var\(--theme-dark\)/g, `color: ${themeColors.dark}`);
+        }
+        
+        // Replace color: var(--theme-light)
+        if (updatedStyle.includes("var(--theme-light)")) {
+          updatedStyle = updatedStyle.replace(/color:\s*var\(--theme-light\)/g, `color: ${themeColors.light}`);
+        }
+        
+        // Replace background-color: var(--theme-primary)
+        if (updatedStyle.includes("background-color: var(--theme-primary)")) {
+          updatedStyle = updatedStyle.replace(/background-color:\s*var\(--theme-primary\)/g, `background-color: ${themeColors.primary}`);
+        }
+        
+        // Replace backgroundColor: var(--theme-primary) (React style)
+        if (updatedStyle.includes("backgroundColor") && updatedStyle.includes("var(--theme-primary)")) {
+          // For React inline styles
+          el.style.backgroundColor = themeColors.primary;
+        }
+        
+        // Apply the updated style
+        if (updatedStyle !== inlineStyle) {
+          el.setAttribute('style', updatedStyle);
+        }
+      });
+    };
 
     // Clone the original sheet for manipulation
     const tempContainer = document.createElement('div');
@@ -61,6 +125,9 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
     const page1Main = page1.querySelector('main');
     if (page1Aside) page1Aside.style.padding = `${contentPadding}px ${contentPadding * 0.667}px`;
     if (page1Main) page1Main.style.padding = `${contentPadding}px`;
+    
+    // Apply theme colors to page 1
+    applyThemeColors(page1);
     
     // Remove page break indicator from clone
     const clonedIndicator = page1.querySelector('.page-break-indicator');
@@ -116,6 +183,9 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
           pageNMain.style.marginTop = `-${pageHeightPx * (i + 1)}px`;
         }
         
+        // Apply theme colors to page N
+        applyThemeColors(pageN);
+        
         // Remove page break indicator
         const pageNIndicator = pageN.querySelector('.page-break-indicator');
         if (pageNIndicator) pageNIndicator.remove();
@@ -160,7 +230,7 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
     
     return true;
   } catch (err) {
-    console.error("PDF export failed", err);
+    logger.error("PDF export failed", err);
     toast.error("PDF export failed: " + (err?.message || err));
     
     // Cleanup on error

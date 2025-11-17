@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff, ChevronDown, ChevronUp } from "lucide-react";
 import { SECTION_CONFIG, isSectionEmpty } from "../../constants/sectionConfig";
 import { toast } from "sonner";
+import PropTypes from 'prop-types';
 
 export default function SectionVisibility({ state, sectionVisibility, setSectionVisibility }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,6 +50,9 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
+          aria-label={`Section visibility controls, ${visibleCount} of ${SECTION_CONFIG.length} sections visible`}
+          aria-expanded={isOpen}
+          aria-controls="section-visibility-options"
         >
           {isOpen ? <EyeOff size={16} /> : <Eye size={16} />}
           Section Visibility ({visibleCount}/{SECTION_CONFIG.length})
@@ -60,12 +64,14 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
             <button
               onClick={showAll}
               className="px-2 py-1 text-xs rounded border hover:bg-white transition-colors"
+              aria-label="Show all sections"
             >
               Show All
             </button>
             <button
               onClick={hideEmpty}
               className="px-2 py-1 text-xs rounded border hover:bg-white transition-colors"
+              aria-label="Hide empty sections"
             >
               Hide Empty
             </button>
@@ -74,7 +80,7 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
       </div>
 
       {isOpen && (
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div id="section-visibility-options" className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2" role="group" aria-label="Section visibility toggles">
           {SECTION_CONFIG.map(section => {
             const isEmpty = isSectionEmpty(state, section.id);
             return (
@@ -97,6 +103,7 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
                   onChange={() => toggleSection(section.id)}
                   disabled={section.required}
                   className="cursor-pointer"
+                  aria-label={`Toggle ${section.label} section visibility`}
                 />
                 <span className="text-xs flex-1">
                   {section.label}
@@ -111,3 +118,9 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
     </div>
   );
 }
+
+SectionVisibility.propTypes = {
+  state: PropTypes.object.isRequired,
+  sectionVisibility: PropTypes.object.isRequired,
+  setSectionVisibility: PropTypes.func.isRequired,
+};
