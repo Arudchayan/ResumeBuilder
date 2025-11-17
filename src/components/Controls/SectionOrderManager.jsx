@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowUpDown, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { SECTION_CONFIG } from "../../constants/sectionConfig";
 import { toast } from "sonner";
+import PropTypes from 'prop-types';
 
 export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,6 +37,9 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
+          aria-label="Section order controls"
+          aria-expanded={isOpen}
+          aria-controls="section-order-list"
         >
           <ArrowUpDown size={16} />
           Section Order
@@ -46,6 +50,7 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
           <button
             onClick={resetOrder}
             className="flex items-center gap-1 px-2 py-1 text-xs rounded border hover:bg-white transition-colors"
+            aria-label="Reset section order to default"
           >
             <RotateCcw size={12} />
             Reset Order
@@ -54,7 +59,7 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
       </div>
 
       {isOpen && (
-        <div className="mt-3 space-y-1">
+        <div id="section-order-list" className="mt-3 space-y-1">
           <p className="text-xs text-slate-500 mb-2">Drag sections below or use arrows to reorder</p>
           {sectionOrder.map((sectionId, index) => (
             <div
@@ -73,6 +78,7 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
                   title="Move up"
+                  aria-label={`Move ${getSectionLabel(sectionId)} section up`}
                 >
                   ↑
                 </button>
@@ -85,6 +91,7 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
                   title="Move down"
+                  aria-label={`Move ${getSectionLabel(sectionId)} section down`}
                 >
                   ↓
                 </button>
@@ -96,3 +103,8 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
     </div>
   );
 }
+
+SectionOrderManager.propTypes = {
+  sectionOrder: PropTypes.arrayOf(PropTypes.string).isRequired,
+  setSectionOrder: PropTypes.func.isRequired,
+};

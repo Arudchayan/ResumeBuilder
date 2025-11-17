@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { logger } from "./logger";
 
 export function cleanupOldDrafts() {
   const keysToClean = [];
@@ -22,7 +23,7 @@ export function clearOldResumeData() {
   keysToRemove.forEach(key => localStorage.removeItem(key));
   
   if (keysToRemove.length === 0) {
-    console.warn('No old resume data to clean. localStorage might be full from other apps.');
+    logger.warn('No old resume data to clean. localStorage might be full from other apps.');
   }
 }
 
@@ -41,7 +42,7 @@ export function saveToLocalStorage(key, data) {
       localStorage.setItem(key, dataStr);
       return true;
     } catch (quotaError) {
-      console.warn('LocalStorage quota exceeded, cleaning up...');
+      logger.warn('LocalStorage quota exceeded, cleaning up...');
       clearOldResumeData();
       try {
         localStorage.setItem(key, dataStr);
@@ -53,7 +54,7 @@ export function saveToLocalStorage(key, data) {
       }
     }
   } catch (e) {
-    console.error('Failed to save to localStorage:', e);
+    logger.error('Failed to save to localStorage:', e);
     return false;
   }
 }
@@ -65,7 +66,7 @@ export function loadFromLocalStorage(key) {
       return JSON.parse(saved);
     }
   } catch (e) {
-    console.error('Failed to load from localStorage:', e);
+    logger.error('Failed to load from localStorage:', e);
   }
   return null;
 }

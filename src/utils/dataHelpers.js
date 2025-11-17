@@ -1,5 +1,6 @@
 import DOMPurify from "dompurify";
 import { blankState } from "../constants/defaultData";
+import { logger } from "./logger";
 
 export function cleanText(s){ 
   const text = (s ?? "").toString().replace(/\s+/g, " ").trim();
@@ -22,12 +23,12 @@ export function normalizeUrl(u){
     const parsed = new URL(url);
     // Only allow http and https protocols (block javascript:, data:, etc.)
     if (!['http:', 'https:'].includes(parsed.protocol)) {
-      console.warn('Invalid URL protocol:', parsed.protocol);
+      logger.warn('Invalid URL protocol:', parsed.protocol);
       return "";
     }
     return parsed.href;
   } catch (e) {
-    console.warn('Invalid URL:', s);
+    logger.warn('Invalid URL:', s);
     return "";
   }
 }

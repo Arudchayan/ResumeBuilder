@@ -2,6 +2,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Unde
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
 import { cleanText } from './dataHelpers';
+import { logger } from './logger';
 
 export async function exportToDocx(state) {
   try {
@@ -396,7 +397,7 @@ export async function exportToDocx(state) {
     toast.success("DOCX exported successfully!");
     return true;
   } catch (err) {
-    console.error("DOCX export failed", err);
+    logger.error("DOCX export failed", err);
     toast.error("DOCX export failed: " + (err?.message || err));
     return false;
   }

@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "sonner";
+import { logger } from "./logger";
 
 export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
   try {
@@ -229,7 +230,7 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding) {
     
     return true;
   } catch (err) {
-    console.error("PDF export failed", err);
+    logger.error("PDF export failed", err);
     toast.error("PDF export failed: " + (err?.message || err));
     
     // Cleanup on error
