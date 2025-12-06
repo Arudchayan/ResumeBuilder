@@ -1,8 +1,51 @@
 import { z } from "zod";
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phonePattern = /^[+()0-9\s.-]{5,}$/;
+
+const isValidEmail = (value) => !value || emailPattern.test(value);
+const isValidPhone = (value) => !value || phonePattern.test(value);
+const isValidHttpUrl = (value) => {
+  if (!value) return true;
+  try {
+    const candidate = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    const parsed = new URL(candidate);
+    return ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+};
+
+const emailField = () =>
+  z
+    .string()
+    .trim()
+    .max(200)
+    .refine(isValidEmail, { message: "Enter a valid email address" })
+    .optional()
+    .default("");
+
+const phoneField = () =>
+  z
+    .string()
+    .trim()
+    .max(100)
+    .refine(isValidPhone, { message: "Enter a valid phone number" })
+    .optional()
+    .default("");
+
+const httpUrlField = (max = 1000) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .refine(isValidHttpUrl, { message: "Enter a valid URL (http/https)" })
+    .optional()
+    .default("");
+
 const linkSchema = z.object({
   label: z.string().trim().max(200).optional().default(""),
-  url: z.string().trim().max(1000).optional().default(""),
+  url: httpUrlField(),
 });
 
 const jobSectionSchema = z.object({
@@ -37,7 +80,7 @@ const projectSchema = z.object({
   tech: z.string().trim().max(300).optional().default(""),
   start: z.string().trim().max(100).optional().default(""),
   end: z.string().trim().max(100).optional().default(""),
-  url: z.string().trim().max(1000).optional().default(""),
+  url: httpUrlField(),
 });
 
 const languageSchema = z.object({
@@ -49,7 +92,7 @@ const publicationSchema = z.object({
   title: z.string().trim().max(300).optional().default(""),
   publisher: z.string().trim().max(200).optional().default(""),
   when: z.string().trim().max(100).optional().default(""),
-  url: z.string().trim().max(1000).optional().default(""),
+  url: httpUrlField(),
 });
 
 const awardSchema = z.object({
@@ -65,8 +108,8 @@ export const resumeSchema = z.object({
   contact: z
     .object({
       location: z.string().trim().max(200).optional().default(""),
-      phone: z.string().trim().max(100).optional().default(""),
-      email: z.string().trim().max(200).optional().default(""),
+      phone: phoneField(),
+      email: emailField(),
     })
     .optional()
     .default({ location: "", phone: "", email: "" }),
@@ -82,7 +125,7 @@ export const resumeSchema = z.object({
   photo: z
     .object({
       enabled: z.boolean().optional().default(false),
-      url: z.string().trim().max(2000).optional().default(""),
+      url: httpUrlField(2000),
       dataUrl: z.string().optional().default(""),
     })
     .optional()

@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
 import { cleanText } from './dataHelpers';
@@ -390,7 +390,7 @@ export async function exportToDocx(state) {
     // Generate and save
     const blob = await Packer.toBlob(doc);
     const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
-    const base = (state.name || 'resume').toString().trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_\-]/g, '');
+    const base = (state.name || 'resume').toString().trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_-]/g, '');
     const filename = `${base || 'resume'}-Resume-${dateStr}.docx`;
     saveAs(blob, filename);
     

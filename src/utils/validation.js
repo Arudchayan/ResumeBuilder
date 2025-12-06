@@ -18,7 +18,7 @@ export function validateImageFile(file) {
   return true;
 }
 
-export function validateImageDimensions(img, callback) {
+export function validateImageDimensions(img) {
   if (img.width < 100 || img.height < 100) {
     toast.error('Image must be at least 100x100 pixels');
     return false;

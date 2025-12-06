@@ -17,7 +17,7 @@ export default function SkillsSection({ state, update }) {
           <span key={i} className="px-3 py-1 rounded-full border text-xs bg-slate-50">{s}</span>
         ))}
       </div>
-      <p className="text-xs text-slate-500 mt-1">Use commas to separate skills. They'll render as tidy pills.</p>
+      <p className="text-xs text-slate-500 mt-1">Use commas to separate skills. They&rsquo;ll render as tidy pills.</p>
     </Section>
   );
 }
