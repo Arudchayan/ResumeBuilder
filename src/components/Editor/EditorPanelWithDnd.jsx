@@ -27,7 +27,7 @@ import Label from '../UI/Label';
 import Input from '../UI/Input';
 import Textarea from '../UI/Textarea';
 
-export default function EditorPanelWithDnd({ state, actions, sectionVisibility, sectionOrder, setSectionOrder }) {
+export default function EditorPanelWithDnd({ state, actions, sectionVisibility, sectionOrder, setSectionOrder, validationMessages = {} }) {
   const {
     update,
     updatePhoto,
@@ -87,6 +87,7 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
           addRow={addRow} 
           removeRow={removeRow} 
           setState={setState}
+          validationMessages={validationMessages}
         />
       </SortableSection>
     ),

@@ -10,6 +10,7 @@ import Main from "./components/Preview/Main";
 import SectionVisibility from "./components/Controls/SectionVisibility";
 import SectionOrderManager from "./components/Controls/SectionOrderManager";
 import ThemePicker from "./components/Controls/ThemePicker";
+import OnboardingModal from "./components/OnboardingModal";
 
 // Utils
 import { exportToPDF } from "./utils/exportPdf";
@@ -17,6 +18,7 @@ import { exportToDocx } from "./utils/exportDocx";
 import { saveToLocalStorage, loadFromLocalStorage, cleanupOldDrafts } from "./utils/localStorage";
 import { safeHydrate } from "./utils/dataHelpers";
 import { validateImportedResume } from "./utils/validation";
+import { validateResumeData } from "./utils/schema";
 
 // Constants
 import { blankState } from "./constants/defaultData";
@@ -39,12 +41,18 @@ export default function ResumeBuilder() {
   
   // UI state (not undoable)
   const fileInputRef = useRef(null);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [nowTick, setNowTick] = useState(Date.now());
   const [paperSize, setPaperSize] = useState('a4');
   const [contentPadding, setContentPadding] = useState(48);
   const [fontSize, setFontSize] = useState(100);
   const [viewMode, setViewMode] = useState('editor'); // 'editor' | 'preview' for mobile
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showPageGuide, setShowPageGuide] = useState(true);
+  const sheetRef = useRef(null);
+  const [pageEstimate, setPageEstimate] = useState(1);
 
   const paperSizes = {
     a4: { width: 210, height: 297, name: 'A4 (210×297mm)' },
@@ -53,19 +61,75 @@ export default function ResumeBuilder() {
   };
   
   const currentPaper = paperSizes[paperSize] || paperSizes.a4;
+  const relativeTimeFormatter = useMemo(() => new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }), []);
+  const relativeLastSaved = useMemo(() => {
+    if (!lastSaved) return null;
+    const diff = lastSaved - nowTick;
+    const absDiff = Math.abs(diff);
+    if (absDiff < 15 * 1000) return "just now";
+    if (absDiff < 60 * 60 * 1000) {
+      return relativeTimeFormatter.format(Math.round(diff / (60 * 1000)), "minute");
+    }
+    if (absDiff < 24 * 60 * 60 * 1000) {
+      return relativeTimeFormatter.format(Math.round(diff / (60 * 60 * 1000)), "hour");
+    }
+    return relativeTimeFormatter.format(Math.round(diff / (24 * 60 * 60 * 1000)), "day");
+  }, [lastSaved, nowTick, relativeTimeFormatter]);
+  const validationMessages = useMemo(() => {
+    const result = validateResumeData(state.present);
+    if (result.success) return {};
+    return result.error.issues.reduce((acc, issue) => {
+      const key = issue.path.join('.');
+      if (!acc[key]) acc[key] = issue.message;
+      return acc;
+    }, {});
+  }, [state.present]);
 
   // Auto-save to localStorage
   useEffect(() => {
     if (exporting) return; // pause autosave while exporting
+    setIsDirty(true);
     const timer = setTimeout(() => {
         const toSave = { ...state.present, _savedAt: Date.now() };
       if (saveToLocalStorage('resume_draft', toSave)) {
-          setLastSaved(new Date());
+          setLastSaved(Date.now());
+          setIsDirty(false);
           cleanupOldDrafts();
       }
     }, 2000);
     return () => clearTimeout(timer);
   }, [state.present, exporting]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = window.localStorage.getItem('resume_onboarding_complete');
+    if (!seen) setShowOnboarding(true);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNowTick(Date.now()), 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mmToPx = 3.7795275591;
+    const updatePageEstimate = () => {
+      const mainEl = sheetRef.current?.querySelector('main');
+      if (!mainEl) return;
+      const totalHeight = mainEl.scrollHeight || 0;
+      const estimate = Math.max(1, Math.ceil(totalHeight / (currentPaper.height * mmToPx)));
+      setPageEstimate(estimate);
+    };
+    updatePageEstimate();
+    const ResizeObserverCtor = window.ResizeObserver;
+    if (typeof ResizeObserverCtor === "undefined") return;
+    const mainEl = sheetRef.current?.querySelector('main');
+    if (!mainEl) return;
+    const observer = new ResizeObserverCtor(updatePageEstimate);
+    observer.observe(mainEl);
+    return () => observer.disconnect();
+  }, [state.present, currentPaper.height, fontSize, contentPadding, viewMode]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -171,6 +235,18 @@ export default function ResumeBuilder() {
     toast.success("Sample resume loaded!");
   }
 
+  const dismissOnboarding = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem('resume_onboarding_complete', '1');
+    }
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingLoad = () => {
+    loadSample();
+    dismissOnboarding();
+  };
+
   function exportJSON() {
     const blob = new Blob([JSON.stringify(state.present, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -200,15 +276,15 @@ export default function ResumeBuilder() {
   }
 
   async function handlePrintPDF() {
-    setExporting(true);
-    const success = await exportToPDF(state.present, paperSize, fontSize, contentPadding);
-    setExporting(false);
+    setExporting('pdf');
+    await exportToPDF(state.present, paperSize, fontSize, contentPadding);
+    setExporting(null);
   }
 
   async function handleExportDocx() {
-    setExporting(true);
-    const success = await exportToDocx(state.present);
-    setExporting(false);
+    setExporting('docx');
+    await exportToDocx(state.present);
+    setExporting(null);
   }
 
   // Section visibility (separate state, not undoable)
@@ -233,7 +309,7 @@ export default function ResumeBuilder() {
       next.sectionVisibility = sectionVisibility;
       setState(next);
     }
-  }, [sectionVisibility, state.present.sectionVisibility, setState]);
+  }, [sectionVisibility, state.present, setState]);
 
   // Sync sectionOrder with state for persistence
   useEffect(() => {
@@ -242,7 +318,7 @@ export default function ResumeBuilder() {
       next.sectionOrder = sectionOrder;
       setState(next);
     }
-  }, [sectionOrder, state.present.sectionOrder, setState]);
+  }, [sectionOrder, state.present, setState]);
 
   // Sync theme with state for persistence
   useEffect(() => {
@@ -251,7 +327,7 @@ export default function ResumeBuilder() {
       next.theme = theme;
       setState(next);
     }
-  }, [theme, state.present.theme, setState]);
+  }, [theme, state.present, setState]);
 
   // Group all actions for passing to children
   const actions = {
@@ -280,6 +356,11 @@ export default function ResumeBuilder() {
       '--theme-gradient-from': currentTheme.gradient[0],
       '--theme-gradient-to': currentTheme.gradient[1],
     }}>
+      <OnboardingModal
+        open={showOnboarding}
+        onClose={dismissOnboarding}
+        onLoadSample={handleOnboardingLoad}
+      />
       {/* Print styles */}
       <style>{`
         @page { size: A4; margin: 12mm }
@@ -322,12 +403,14 @@ export default function ResumeBuilder() {
           <div className="flex items-center justify-between border-b p-3">
             <div>
               <h2 className="text-sm font-bold tracking-wide">Resume Builder</h2>
-              {lastSaved && (
-                <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                  <Save size={12} />
-                  Saved {lastSaved.toLocaleTimeString()}
-                </div>
-              )}
+              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                <span className={`inline-flex h-2 w-2 rounded-full ${isDirty ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} aria-hidden />
+                <Save size={12} />
+                {isDirty && !exporting && <span>Saving changes…</span>}
+                {exporting && <span>Paused while exporting…</span>}
+                {!isDirty && !exporting && lastSaved && <span>Saved {relativeLastSaved}</span>}
+                {!isDirty && !exporting && !lastSaved && <span>Not saved yet</span>}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <button 
@@ -364,11 +447,18 @@ export default function ResumeBuilder() {
                 <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={importJSONFile} />
               </label>
               <button 
-                disabled={exporting} 
+                disabled={!!exporting} 
                 className={`px-3 py-2 rounded-xl text-sm transition-all ${exporting ? 'bg-slate-300 text-slate-600 cursor-not-allowed' : 'bg-teal-500 text-white hover:bg-teal-600 active:scale-95'}`} 
                 onClick={handlePrintPDF}
               >
-                <Printer className="inline -mt-1 mr-1" size={16}/>{exporting ? 'Exporting…' : 'Export to PDF'}
+                <Printer className="inline -mt-1 mr-1" size={16}/>{exporting === 'pdf' ? 'Exporting…' : 'Export to PDF'}
+              </button>
+              <button
+                disabled={!!exporting}
+                className={`px-3 py-2 rounded-xl text-sm transition-all ${exporting ? 'bg-slate-300 text-slate-600 cursor-not-allowed' : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'}`}
+                onClick={handleExportDocx}
+              >
+                <FileText className="inline -mt-1 mr-1" size={16}/>{exporting === 'docx' ? 'Exporting…' : 'Export to DOCX'}
               </button>
             </div>
           </div>
@@ -377,6 +467,8 @@ export default function ResumeBuilder() {
             state={state.present} 
             sectionVisibility={sectionVisibility} 
             setSectionVisibility={setSectionVisibility} 
+            sectionOrder={sectionOrder}
+            setSectionOrder={setSectionOrder}
           />
 
           <SectionOrderManager
@@ -396,6 +488,7 @@ export default function ResumeBuilder() {
               sectionVisibility={sectionVisibility}
               sectionOrder={sectionOrder}
               setSectionOrder={setSectionOrder}
+              validationMessages={validationMessages}
             />
           </Suspense>
         </div>
@@ -421,8 +514,8 @@ export default function ResumeBuilder() {
                   className="text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-teal-400"
                 >
                   <option value="a4">A4 (210×297mm)</option>
-                  <option value="letter">Letter (8.5×11")</option>
-                  <option value="legal">Legal (8.5×14")</option>
+                  <option value="letter">Letter (8.5×11&quot;)</option>
+                  <option value="legal">Legal (8.5×14&quot;)</option>
                 </select>
               </div>
               
@@ -440,18 +533,40 @@ export default function ResumeBuilder() {
                 <span className="text-slate-500 min-w-[60px]">{Math.round(contentPadding / 4)}mm</span>
               </div>
               
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-slate-600 font-medium">Font Scale:</label>
+                  <input 
+                    type="range" 
+                    min="75" 
+                    max="125" 
+                    step="5"
+                    value={fontSize}
+                    onChange={(e) => setFontSize(Number(e.target.value))}
+                    className="w-24"
+                  />
+                  <span className="text-slate-500 min-w-[45px]">{fontSize}%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[85, 100, 115].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setFontSize(preset)}
+                      className={`rounded border px-2 py-0.5 text-[11px] ${fontSize === preset ? 'bg-teal-50 border-teal-300 text-teal-700' : 'hover:bg-slate-50'}`}
+                      aria-label={`Set font scale to ${preset}%`}
+                    >
+                      {preset}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
               <div className="flex items-center gap-2">
-                <label className="text-slate-600 font-medium">Font Scale:</label>
-                <input 
-                  type="range" 
-                  min="75" 
-                  max="125" 
-                  step="5"
-                  value={fontSize}
-                  onChange={(e) => setFontSize(Number(e.target.value))}
-                  className="w-24"
-                />
-                <span className="text-slate-500 min-w-[45px]">{fontSize}%</span>
+                <span className="text-slate-600 font-medium">Page length:</span>
+                <span className={`font-semibold ${pageEstimate > 1 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {pageEstimate} page{pageEstimate > 1 ? 's' : ''}
+                </span>
               </div>
               
               <button
@@ -464,20 +579,28 @@ export default function ResumeBuilder() {
               >
                 Reset Layout
               </button>
+              <button
+                className="px-2 py-1 text-xs rounded border hover:bg-slate-50 transition-colors"
+                onClick={() => setShowPageGuide(prev => !prev)}
+              >
+                {showPageGuide ? "Hide page guide" : "Show page guide"}
+              </button>
             </div>
           </div>
           
           <div className="p-4 bg-slate-100">
-            <div className="sheet mx-auto border shadow-lg relative" style={{ width: `${currentPaper.width}mm`, minHeight: `${currentPaper.height}mm`, background: "white", fontSize: `${fontSize}%` }}>
+            <div ref={sheetRef} className="sheet mx-auto border shadow-lg relative" style={{ width: `${currentPaper.width}mm`, minHeight: `${currentPaper.height}mm`, background: "white", fontSize: `${fontSize}%` }}>
               {/* Page break indicator */}
-              <div 
-                className="page-break-indicator absolute left-0 right-0 border-b-2 border-dashed border-red-400 pointer-events-none z-10" 
-                style={{ top: `${currentPaper.height}mm` }}
-              >
-                <div className="absolute right-2 -top-3 bg-red-400 text-white text-[10px] px-2 py-0.5 rounded shadow-md">
-                  📄 Page 1 ends here
+              {showPageGuide && (
+                <div 
+                  className="page-break-indicator absolute left-0 right-0 border-b-2 border-dashed border-red-400 pointer-events-none z-10" 
+                  style={{ top: `${currentPaper.height}mm` }}
+                >
+                  <div className="absolute right-2 -top-3 bg-red-400 text-white text-[10px] px-2 py-0.5 rounded shadow-md">
+                    📄 Page 1 ends here
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="grid grid-cols-[30%_1fr]" style={{ minHeight: `${currentPaper.height}mm` }}>
                 <aside className="border-r" style={{ padding: `${contentPadding}px ${contentPadding * 0.667}px`, background: `linear-gradient(180deg, var(--theme-gradient-from) 0%, var(--theme-gradient-to) 100%)` }}>
                   <Aside state={state.present} sectionVisibility={sectionVisibility} />

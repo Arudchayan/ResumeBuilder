@@ -4,7 +4,9 @@ import Row from "../UI/Row";
 import Label from "../UI/Label";
 import Input from "../UI/Input";
 
-export default function ContactSection({ state, update, addRow, removeRow, setState }) {
+export default function ContactSection({ state, update, addRow, removeRow, setState, validationMessages = {} }) {
+  const fieldError = (path) => validationMessages[path];
+
   return (
     <Section title="Contact & Links">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -13,6 +15,7 @@ export default function ContactSection({ state, update, addRow, removeRow, setSt
           <Input 
             value={state.contact.location} 
             onChange={e => update("contact.location", e.target.value)} 
+            error={fieldError("contact.location")}
           />
         </div>
         <div>
@@ -20,6 +23,7 @@ export default function ContactSection({ state, update, addRow, removeRow, setSt
           <Input 
             value={state.contact.phone} 
             onChange={e => update("contact.phone", e.target.value)} 
+            error={fieldError("contact.phone")}
           />
         </div>
         <div>
@@ -27,6 +31,7 @@ export default function ContactSection({ state, update, addRow, removeRow, setSt
           <Input 
             value={state.contact.email} 
             onChange={e => update("contact.email", e.target.value)} 
+            error={fieldError("contact.email")}
           />
         </div>
       </div>
@@ -44,6 +49,7 @@ export default function ContactSection({ state, update, addRow, removeRow, setSt
                     next.links[idx].label = e.target.value;
                     setState(next);
                   }}
+                error={fieldError(`links.${idx}.label`)}
                 />
               </div>
               <div>
@@ -55,6 +61,8 @@ export default function ContactSection({ state, update, addRow, removeRow, setSt
                     next.links[idx].url = e.target.value;
                     setState(next);
                   }}
+                error={fieldError(`links.${idx}.url`)}
+                placeholder="https://"
                 />
               </div>
             </div>

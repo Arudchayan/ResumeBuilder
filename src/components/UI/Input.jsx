@@ -1,33 +1,64 @@
+import { useId } from "react";
 import { toast } from "sonner";
 import PropTypes from 'prop-types';
 
-export default function Input(props) { 
+export default function Input({
+  className = "",
+  error,
+  helperText,
+  maxLength,
+  onChange,
+  onPaste,
+  ...rest
+}) { 
+  const helperId = useId();
+
   const handlePaste = (e) => {
-    if (props.maxLength) {
+    if (maxLength) {
       const paste = e.clipboardData.getData('text');
       const currentValue = e.target.value;
       const selectionStart = e.target.selectionStart;
       const selectionEnd = e.target.selectionEnd;
       const newValue = currentValue.substring(0, selectionStart) + paste + currentValue.substring(selectionEnd);
       
-      if (newValue.length > props.maxLength) {
+      if (newValue.length > maxLength) {
         e.preventDefault();
-        const allowedPaste = paste.substring(0, props.maxLength - (currentValue.length - (selectionEnd - selectionStart)));
+        const allowedPaste = paste.substring(0, maxLength - (currentValue.length - (selectionEnd - selectionStart)));
         const finalValue = currentValue.substring(0, selectionStart) + allowedPaste + currentValue.substring(selectionEnd);
         e.target.value = finalValue;
-        if (props.onChange) {
-          props.onChange({ target: { value: finalValue } });
+        if (onChange) {
+          onChange({ target: { value: finalValue } });
         }
-        toast.warning(`Text trimmed to ${props.maxLength} characters`);
+        toast.warning(`Text trimmed to ${maxLength} characters`);
       }
     }
+    if (onPaste) onPaste(e);
   };
-  
-  return <input {...props} onPaste={handlePaste} className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400 ${props.className||""}`} />; 
+
+  const describedBy = error || helperText ? `${helperId}-helper` : undefined;
+
+  return (
+    <div className="space-y-1">
+      <input
+        {...rest}
+        maxLength={maxLength}
+        onChange={onChange}
+        onPaste={handlePaste}
+        aria-invalid={Boolean(error)}
+        aria-describedby={describedBy}
+        className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${error ? 'border-red-300 focus:ring-red-300' : 'border-slate-200 focus:ring-teal-400'} ${className}`}
+      />
+      {(error || helperText) && (
+        <p id={describedBy} className={`text-xs ${error ? 'text-red-600' : 'text-slate-500'}`}>
+          {error || helperText}
+        </p>
+      )}
+    </div>
+  );
 }
 
 Input.propTypes = {
-  value: PropTypes.string,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   onChange: PropTypes.func,
   onPaste: PropTypes.func,
   maxLength: PropTypes.number,
@@ -35,5 +66,7 @@ Input.propTypes = {
   className: PropTypes.string,
   disabled: PropTypes.bool,
   type: PropTypes.string,
+  error: PropTypes.string,
+  helperText: PropTypes.string,
 };
 
