@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState, lazy, Suspense } from "react";
+import { useMemo, useRef, useEffect, useState, lazy, Suspense, useDeferredValue } from "react";
 import { Upload, Download, Printer, Save, Undo2, Redo2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import useUndo from "use-undo";
@@ -12,9 +12,7 @@ import SectionOrderManager from "./components/Controls/SectionOrderManager";
 import ThemePicker from "./components/Controls/ThemePicker";
 import OnboardingModal from "./components/OnboardingModal";
 
-// Utils
-import { exportToPDF } from "./utils/exportPdf";
-import { exportToDocx } from "./utils/exportDocx";
+// Utils (PDF/DOCX loaded on demand — large deps)
 import { saveToLocalStorage, loadFromLocalStorage, cleanupOldDrafts } from "./utils/localStorage";
 import { safeHydrate } from "./utils/dataHelpers";
 import { validateImportedResume } from "./utils/validation";
@@ -25,6 +23,33 @@ import { blankState } from "./constants/defaultData";
 import { sampleFromYourPDF } from "./constants/sampleData";
 import { getDefaultVisibility, SECTION_CONFIG } from "./constants/sectionConfig";
 import { themes, defaultTheme } from "./constants/themes";
+
+const PAPER_SIZES = {
+  a4: { width: 210, height: 297, name: 'A4 (210×297mm)' },
+  letter: { width: 215.9, height: 279.4, name: 'Letter (8.5×11")' },
+  legal: { width: 215.9, height: 355.6, name: 'Legal (8.5×14")' },
+};
+
+function visibilityRecordsEqual(a, b) {
+  if (a === b) return true;
+  const aObj = a || {};
+  const bObj = b || {};
+  const keys = new Set([...Object.keys(aObj), ...Object.keys(bObj)]);
+  for (const k of keys) {
+    if (aObj[k] !== bObj[k]) return false;
+  }
+  return true;
+}
+
+function sectionOrderEqual(a, b) {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
 
 export default function ResumeBuilder() {
   // Initialize state with undo/redo support
@@ -38,7 +63,11 @@ export default function ResumeBuilder() {
   }, []);
   
   const [state, { set: setState, undo, redo, canUndo, canRedo }] = useUndo(initialState);
-  
+  const presentRef = useRef(state.present);
+  presentRef.current = state.present;
+  const setStateRef = useRef(setState);
+  setStateRef.current = setState;
+
   // UI state (not undoable)
   const fileInputRef = useRef(null);
   const [exporting, setExporting] = useState(null);
@@ -54,13 +83,18 @@ export default function ResumeBuilder() {
   const sheetRef = useRef(null);
   const [pageEstimate, setPageEstimate] = useState(1);
 
-  const paperSizes = {
-    a4: { width: 210, height: 297, name: 'A4 (210×297mm)' },
-    letter: { width: 215.9, height: 279.4, name: 'Letter (8.5×11")' },
-    legal: { width: 215.9, height: 355.6, name: 'Legal (8.5×14")' }
-  };
-  
-  const currentPaper = paperSizes[paperSize] || paperSizes.a4;
+  const currentPaper = PAPER_SIZES[paperSize] || PAPER_SIZES.a4;
+
+  const printPageCssSize = useMemo(() => {
+    switch (paperSize) {
+      case "letter":
+        return "letter";
+      case "legal":
+        return "legal";
+      default:
+        return "A4";
+    }
+  }, [paperSize]);
   const relativeTimeFormatter = useMemo(() => new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }), []);
   const relativeLastSaved = useMemo(() => {
     if (!lastSaved) return null;
@@ -75,15 +109,16 @@ export default function ResumeBuilder() {
     }
     return relativeTimeFormatter.format(Math.round(diff / (24 * 60 * 60 * 1000)), "day");
   }, [lastSaved, nowTick, relativeTimeFormatter]);
+  const deferredPresent = useDeferredValue(state.present);
   const validationMessages = useMemo(() => {
-    const result = validateResumeData(state.present);
+    const result = validateResumeData(deferredPresent);
     if (result.success) return {};
     return result.error.issues.reduce((acc, issue) => {
       const key = issue.path.join('.');
       if (!acc[key]) acc[key] = issue.message;
       return acc;
     }, {});
-  }, [state.present]);
+  }, [deferredPresent]);
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -230,21 +265,11 @@ export default function ResumeBuilder() {
     setState(next);
   }
 
-  function loadSample() { 
-    setState(sampleFromYourPDF());
-    toast.success("Sample resume loaded!");
-  }
-
   const dismissOnboarding = () => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem('resume_onboarding_complete', '1');
     }
     setShowOnboarding(false);
-  };
-
-  const handleOnboardingLoad = () => {
-    loadSample();
-    dismissOnboarding();
   };
 
   function exportJSON() {
@@ -255,36 +280,24 @@ export default function ResumeBuilder() {
     toast.success("Resume exported as JSON!");
   }
 
-  function importJSONFile(e) {
-    const file = e.target.files?.[0]; 
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try { 
-        const json = JSON.parse(reader.result);
-        const validated = validateImportedResume(json);
-        if (!validated) return;
-        setState(safeHydrate(validated));
-        toast.success("Resume imported successfully!");
-      }
-      catch (err) { 
-        toast.error("Invalid JSON: " + err.message);
-      }
-      finally { e.target.value = ""; }
-    };
-    reader.readAsText(file);
-  }
-
   async function handlePrintPDF() {
     setExporting('pdf');
-    await exportToPDF(state.present, paperSize, fontSize, contentPadding);
-    setExporting(null);
+    try {
+      const { exportToPDF } = await import("./utils/exportPdf.js");
+      await exportToPDF(state.present, paperSize, fontSize, contentPadding);
+    } finally {
+      setExporting(null);
+    }
   }
 
   async function handleExportDocx() {
     setExporting('docx');
-    await exportToDocx(state.present);
-    setExporting(null);
+    try {
+      const { exportToDocx } = await import("./utils/exportDocx.js");
+      await exportToDocx(state.present);
+    } finally {
+      setExporting(null);
+    }
   }
 
   // Section visibility (separate state, not undoable)
@@ -302,32 +315,68 @@ export default function ResumeBuilder() {
     state.present.theme || defaultTheme
   );
 
-  // Sync sectionVisibility with state for persistence
+  // Sync sectionVisibility / order / theme into undo state (deps avoid work on every keystroke)
   useEffect(() => {
-    if (JSON.stringify(state.present.sectionVisibility) !== JSON.stringify(sectionVisibility)) {
-      const next = structuredClone(state.present);
-      next.sectionVisibility = sectionVisibility;
-      setState(next);
-    }
-  }, [sectionVisibility, state.present, setState]);
+    const present = presentRef.current;
+    if (visibilityRecordsEqual(present.sectionVisibility, sectionVisibility)) return;
+    const next = structuredClone(present);
+    next.sectionVisibility = sectionVisibility;
+    setStateRef.current(next);
+  }, [sectionVisibility]);
 
-  // Sync sectionOrder with state for persistence
   useEffect(() => {
-    if (JSON.stringify(state.present.sectionOrder) !== JSON.stringify(sectionOrder)) {
-      const next = structuredClone(state.present);
-      next.sectionOrder = sectionOrder;
-      setState(next);
-    }
-  }, [sectionOrder, state.present, setState]);
+    const present = presentRef.current;
+    if (sectionOrderEqual(present.sectionOrder, sectionOrder)) return;
+    const next = structuredClone(present);
+    next.sectionOrder = sectionOrder;
+    setStateRef.current(next);
+  }, [sectionOrder]);
 
-  // Sync theme with state for persistence
   useEffect(() => {
-    if (state.present.theme !== theme) {
-      const next = structuredClone(state.present);
-      next.theme = theme;
-      setState(next);
-    }
-  }, [theme, state.present, setState]);
+    const present = presentRef.current;
+    if (present.theme === theme) return;
+    const next = structuredClone(present);
+    next.theme = theme;
+    setStateRef.current(next);
+  }, [theme]);
+
+  function loadSample() {
+    const sample = sampleFromYourPDF();
+    setState(sample);
+    setSectionVisibility(sample.sectionVisibility || getDefaultVisibility());
+    setSectionOrder(sample.sectionOrder || SECTION_CONFIG.map((s) => s.id));
+    setTheme(sample.theme || defaultTheme);
+    toast.success("Sample resume loaded!");
+  }
+
+  const handleOnboardingLoad = () => {
+    loadSample();
+    dismissOnboarding();
+  };
+
+  function importJSONFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(reader.result);
+        const validated = validateImportedResume(json);
+        if (!validated) return;
+        const hydrated = safeHydrate(validated);
+        setState(hydrated);
+        setSectionVisibility(hydrated.sectionVisibility || getDefaultVisibility());
+        setSectionOrder(hydrated.sectionOrder || SECTION_CONFIG.map((s) => s.id));
+        setTheme(hydrated.theme || defaultTheme);
+        toast.success("Resume imported successfully!");
+      } catch (err) {
+        toast.error("Invalid JSON: " + err.message);
+      } finally {
+        e.target.value = "";
+      }
+    };
+    reader.readAsText(file);
+  }
 
   // Group all actions for passing to children
   const actions = {
@@ -361,9 +410,9 @@ export default function ResumeBuilder() {
         onClose={dismissOnboarding}
         onLoadSample={handleOnboardingLoad}
       />
-      {/* Print styles */}
+      {/* Print styles — @page tracks selected paper (browser print / PDF) */}
       <style>{`
-        @page { size: A4; margin: 12mm }
+        @page { size: ${printPageCssSize}; margin: 12mm }
         @media print { 
           .editor { display: none !important; }
           .sheet { box-shadow: none !important; border: none !important; }
@@ -509,7 +558,7 @@ export default function ResumeBuilder() {
                   value={paperSize} 
                   onChange={(e) => {
                     setPaperSize(e.target.value);
-                    toast.success(`Preview size changed to ${paperSizes[e.target.value].name}`);
+                    toast.success(`Preview size changed to ${PAPER_SIZES[e.target.value].name}`);
                   }}
                   className="text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-teal-400"
                 >
@@ -520,8 +569,9 @@ export default function ResumeBuilder() {
               </div>
               
               <div className="flex items-center gap-2">
-                <label className="text-slate-600 font-medium">Margins:</label>
+                <label className="text-slate-600 font-medium" htmlFor="preview-padding-range">Preview padding:</label>
                 <input 
+                  id="preview-padding-range"
                   type="range" 
                   min="24" 
                   max="72" 
@@ -529,8 +579,9 @@ export default function ResumeBuilder() {
                   value={contentPadding}
                   onChange={(e) => setContentPadding(Number(e.target.value))}
                   className="w-24"
+                  aria-valuetext={`${contentPadding} pixels`}
                 />
-                <span className="text-slate-500 min-w-[60px]">{Math.round(contentPadding / 4)}mm</span>
+                <span className="text-slate-500 min-w-[52px] tabular-nums">{contentPadding}px</span>
               </div>
               
               <div className="flex flex-col gap-1">
