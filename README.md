@@ -38,9 +38,3 @@ Security
 - All text is sanitized with DOMPurify
 - Only http/https links are allowed; other protocols are blocked
 - Image uploads validated (type, size ≤ 5MB, dimensions 100–4000px)
-
-Documentation
-- Summary: FINAL_SUMMARY.md
-- Improvements: IMPROVEMENTS_SUMMARY.md
-- Implementation Plan: IMPLEMENTATION_PLAN.md
-- Functional Evaluation: FUNCTIONAL_IMPROVEMENTS_EVALUATION.md
