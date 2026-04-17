@@ -1,86 +1,84 @@
-import { getDefaultVisibility, SECTION_CONFIG } from "./sectionConfig";
-import { defaultTheme } from "./themes";
+import { getDefaultVisibility } from "./sectionConfig";
 
-/**
- * Fictional sample resume for product demonstration (names, companies, and details are not real).
- */
+/** Demo resume: exercises every section, field type, theme, and a non-default section order. */
 export function sampleFromYourPDF() {
   return {
-    name: "Jordan Ellis",
-    headline: "Senior Product Manager — Enterprise SaaS & Data Platforms",
+    name: "Barack Obama",
+    headline: "44th President of the United States",
     summary:
-      "Product management leader with 12+ years delivering B2B software in regulated and data-intensive industries. Focused on roadmap execution, cross-functional alignment, measurable outcomes, and customer trust. Experienced in API platforms, analytics, and security-conscious delivery.",
+      "Public servant and author with decades of experience in leadership, policymaking, and coalition building. Focused on expanding opportunity, strengthening democratic institutions, and civic engagement. This sample demonstrates identity, photo, contact (phone, email, links), skills, employment with multiple role sections, projects with URLs, certifications, education, languages, publications with links, awards, theme colors, and custom section ordering.",
     contact: {
-      location: "Seattle, WA",
-      phone: "+1 (206) 555-0142",
-      email: "jordan.ellis@example.com",
+      location: "Washington, DC",
+      phone: "+1 (202) 456-1414",
+      email: "press@obama.org",
     },
     links: [
-      { label: "LinkedIn", url: "https://www.linkedin.com" },
-      { label: "Portfolio", url: "https://example.com" },
+      { label: "Obama Foundation", url: "https://www.obama.org/" },
+      { label: "Twitter / X", url: "https://twitter.com/BarackObama" },
+      { label: "White House Archives", url: "https://obamawhitehouse.archives.gov/" },
     ],
     skills: [
-      "Product strategy",
-      "Roadmapping & prioritization",
-      "Stakeholder management",
-      "SQL & analytics",
-      "Agile delivery",
-      "API & integration design",
-      "Go-to-market alignment",
+      "Leadership",
+      "Public Policy",
+      "Constitutional Law",
+      "Community Organizing",
+      "Speechwriting",
+      "Diplomacy",
+      "Crisis Communication",
+      "Legislative Strategy",
     ],
     jobs: [
       {
-        role: "Senior Product Manager",
-        company: "Northbridge Software",
-        location: "Seattle, WA (hybrid)",
-        start: "Mar 2020",
-        end: "Present",
+        role: "President of the United States",
+        company: "Executive Office of the President",
+        location: "Washington, DC",
+        start: "Jan 2009",
+        end: "Jan 2017",
         sections: [
           {
-            title: "Impact",
+            title: "Key Initiatives",
             bullets: [
-              "Owned roadmap for the data integration platform used by 200+ enterprise accounts.",
-              "Partnered with engineering and design to reduce time-to-value for new connectors by 35% year over year.",
-              "Defined success metrics, quarterly OKRs, and executive reporting for the platform division.",
+              "Signed the Affordable Care Act to expand health coverage and protections.",
+              "Led economic recovery initiatives following the 2008 financial crisis.",
+              "Advanced clean energy investment and international climate cooperation.",
             ],
           },
           {
-            title: "Leadership",
+            title: "Foreign Policy & Security",
             bullets: [
-              "Led a team of product managers and analysts; mentored ICs and supported hiring.",
-              "Facilitated customer advisory sessions and translated feedback into prioritized backlog items.",
-            ],
-          },
-        ],
-      },
-      {
-        role: "Product Manager",
-        company: "Cascade Analytics",
-        location: "Portland, OR",
-        start: "Jun 2016",
-        end: "Feb 2020",
-        sections: [
-          {
-            title: "Highlights",
-            bullets: [
-              "Shipped self-service reporting features adopted by 80% of active accounts within two quarters.",
-              "Collaborated with legal and security on SOC 2–aligned access controls for customer data.",
+              "Negotiated the Iran nuclear agreement framework and restored diplomatic ties with Cuba.",
+              "Oversaw counterterrorism strategy and the operation against Osama bin Laden.",
             ],
           },
         ],
       },
       {
-        role: "Business Analyst",
-        company: "Harbor Financial Group",
-        location: "Portland, OR",
-        start: "Aug 2012",
-        end: "May 2016",
+        role: "U.S. Senator",
+        company: "United States Senate (Illinois)",
+        location: "Washington, DC",
+        start: "Jan 2005",
+        end: "Nov 2008",
         sections: [
           {
-            title: "Responsibilities",
+            title: "Legislative Work",
             bullets: [
-              "Translated business requirements into specifications for internal tools and reporting.",
-              "Supported UAT, training, and rollout for core banking workflow improvements.",
+              "Served on Foreign Relations, Veterans' Affairs, and Health, Education, Labor, and Pensions committees.",
+              "Co-sponsored bipartisan ethics reform and government transparency measures.",
+            ],
+          },
+        ],
+      },
+      {
+        role: "Illinois State Senator",
+        company: "Illinois General Assembly",
+        location: "Springfield, IL",
+        start: "1997",
+        end: "2004",
+        sections: [
+          {
+            title: "State Legislation",
+            bullets: [
+              "Authored and supported legislation on health care, criminal justice, and ethics reform.",
             ],
           },
         ],
@@ -88,57 +86,101 @@ export function sampleFromYourPDF() {
     ],
     projects: [
       {
-        title: "Connector SDK rollout",
+        title: "Affordable Care Act",
         description:
-          "Developer-facing SDK and documentation initiative to standardize third-party integrations and shorten partner onboarding.",
-        tech: "REST APIs, OAuth 2.0, OpenAPI, developer docs",
-        start: "2022",
-        end: "2023",
-        url: "https://example.com",
+          "Comprehensive health reform focused on expanding access, consumer protections, and cost controls across public and private markets.",
+        tech: "Policy design, Stakeholder engagement, Legislative coalition-building",
+        start: "2009",
+        end: "2010",
+        url: "https://www.healthcare.gov/",
       },
       {
-        title: "Usage analytics program",
+        title: "My Brother's Keeper Alliance",
         description:
-          "Defined event taxonomy and dashboards to align product decisions with adoption and retention data.",
-        tech: "Product analytics, SQL, experimentation",
-        start: "2021",
-        end: "2022",
-        url: "",
+          "Nationwide initiative to address opportunity gaps for boys and young men of color through mentorship, education, and workforce pathways.",
+        tech: "Nonprofit leadership, Partnership development, Program scaling",
+        start: "2014",
+        end: "",
+        url: "https://www.obama.org/programs/mbk-alliance/",
+      },
+      {
+        title: "Paris Agreement — U.S. Leadership",
+        description:
+          "Mobilized domestic clean energy policy and international coordination ahead of the UN climate conference.",
+        tech: "Climate policy, Multilateral diplomacy",
+        start: "2014",
+        end: "2016",
+        url: "https://unfccc.int/process-and-meetings/the-paris-agreement",
       },
     ],
     certs: [
-      { title: "Certified Scrum Product Owner (CSPO)", org: "Scrum Alliance", when: "2019" },
-      { title: "Google Analytics (GA4) — Advanced", org: "Google", when: "2021" },
+      {
+        title: "Illinois Bar Admission",
+        org: "State of Illinois",
+        when: "1991",
+      },
+      {
+        title: "Honorary Doctor of Laws (multiple institutions)",
+        org: "Various universities",
+        when: "2005–2017",
+      },
     ],
     edus: [
-      { degree: "M.B.A.", school: "University of Washington — Foster School of Business", when: "2012" },
-      { degree: "B.S., Economics", school: "University of Oregon", when: "2010" },
+      { degree: "J.D.", school: "Harvard Law School, Harvard University", when: "1991" },
+      { degree: "B.A., Political Science", school: "Columbia University", when: "1983" },
     ],
     languages: [
       { name: "English", level: "Native" },
-      { name: "Spanish", level: "Professional working proficiency" },
+      { name: "Indonesian", level: "Conversational" },
+      { name: "Spanish", level: "Basic" },
     ],
     publications: [
       {
-        title: "Designing trustworthy metrics for B2B SaaS",
-        publisher: "Product Leadership Quarterly",
-        when: "2023",
-        url: "https://example.com",
+        title: "A Promised Land",
+        publisher: "Crown Publishing Group",
+        when: "2020",
+        url: "https://www.penguinrandomhouse.com/books/602051/a-promised-land-by-barack-obama/",
       },
       {
-        title: "Notes on API versioning for platform teams",
-        publisher: "Northbridge Software",
-        when: "2021",
-        url: "",
+        title: "The Audacity of Hope",
+        publisher: "Crown Publishing Group",
+        when: "2006",
+        url: "https://www.penguinrandomhouse.com/books/292622/the-audacity-of-hope-by-barack-obama/",
+      },
+      {
+        title: "Dreams from My Father",
+        publisher: "Times Books / Crown",
+        when: "1995",
+        url: "https://en.wikipedia.org/wiki/Dreams_from_My_Father",
       },
     ],
     awards: [
-      { title: "President's Club", issuer: "Northbridge Software", when: "2022" },
-      { title: "Spotlight Award — Customer outcomes", issuer: "Cascade Analytics", when: "2018" },
+      { title: "Nobel Peace Prize", issuer: "Norwegian Nobel Committee", when: "2009" },
+      { title: "Profile in Courage Award", issuer: "John F. Kennedy Library Foundation", when: "2017" },
+      { title: "Grammy Award (Best Spoken Word Album)", issuer: "National Academy of Recording Arts and Sciences", when: "2006" },
     ],
-    photo: { enabled: false, url: "", dataUrl: "" },
+    photo: {
+      enabled: true,
+      url: "https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg",
+      dataUrl: "",
+    },
+    // Non-default order: showcases drag-and-drop (e.g. projects before employment)
+    sectionOrder: [
+      "identity",
+      "photo",
+      "contact",
+      "skills",
+      "projects",
+      "employment",
+      "certs",
+      "edus",
+      "languages",
+      "publications",
+      "awards",
+    ],
     sectionVisibility: getDefaultVisibility(),
-    sectionOrder: SECTION_CONFIG.map((s) => s.id),
-    theme: defaultTheme,
+    // Non-default theme so the theme picker is visibly different from a blank resume
+    theme: "blue",
+    template: "modern",
   };
 }
