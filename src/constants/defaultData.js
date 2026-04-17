@@ -20,5 +20,7 @@ export function blankState() {
     sectionVisibility: getDefaultVisibility(),
     sectionOrder: SECTION_CONFIG.map(s => s.id),
     theme: defaultTheme,
+    template: "modern",
+    customSections: [],
   };
 }
