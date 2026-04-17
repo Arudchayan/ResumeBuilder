@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { cleanText, normalizeUrl, formatLocation, safeHydrate } from '../dataHelpers';
+import { SECTION_CONFIG } from '../../constants/sectionConfig';
 
 describe('dataHelpers', () => {
   describe('cleanText', () => {
@@ -87,13 +88,22 @@ describe('dataHelpers', () => {
   });
 
   describe('safeHydrate', () => {
-    it('strips unknown top-level keys from imported data', () => {
+    it('merges partial section visibility with defaults', () => {
+      const out = safeHydrate({ sectionVisibility: { skills: false } });
+      expect(out.sectionVisibility.skills).toBe(false);
+      expect(out.sectionVisibility.identity).toBe(true);
+    });
+
+    it('normalizes section order: valid ids, deduped, all sections present', () => {
       const out = safeHydrate({
-        name: "Ada",
-        evilPayload: { nested: true },
+        sectionOrder: ['employment', 'employment', 'invalid', 'skills'],
       });
-      expect(out.name).toBe("Ada");
-      expect("evilPayload" in out).toBe(false);
+      expect(new Set(out.sectionOrder).size).toBe(out.sectionOrder.length);
+      expect(out.sectionOrder.length).toBe(SECTION_CONFIG.length);
+      SECTION_CONFIG.forEach(({ id }) => {
+        expect(out.sectionOrder).toContain(id);
+      });
+      expect(out.sectionOrder.indexOf('employment')).toBeLessThan(out.sectionOrder.indexOf('skills'));
     });
   });
 });

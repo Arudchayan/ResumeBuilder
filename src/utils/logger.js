@@ -4,6 +4,7 @@
  */
 
 const isDev = import.meta.env.DEV;
+const isTest = import.meta.env.MODE === "test";
 
 export const logger = {
   /**
@@ -28,11 +29,10 @@ export const logger = {
    * Log warning messages (development only)
    */
   warn: (...args) => {
+    if (isTest) return;
     if (isDev) {
       console.warn(...args);
     }
-    // In production, optionally send to monitoring service
-    // Example: if (!isDev) sendToMonitoring('warn', args);
   },
 
   /**

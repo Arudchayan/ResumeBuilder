@@ -1,7 +1,7 @@
 import DOMPurify from "dompurify";
 import { blankState } from "../constants/defaultData";
+import { getDefaultVisibility, SECTION_CONFIG } from "../constants/sectionConfig";
 import { logger } from "./logger";
-import { resumeSchema } from "./schema.js";
 
 export function cleanText(s){ 
   const text = (s ?? "").toString().replace(/\s+/g, " ").trim();
@@ -44,17 +44,6 @@ export function formatLocation(s){
   return x;
 }
 
-const ALLOWED_TOP_LEVEL = new Set(Object.keys(resumeSchema.shape));
-
-function stripUnknownTopLevel(obj) {
-  for (const key of Object.keys(obj)) {
-    if (!ALLOWED_TOP_LEVEL.has(key)) {
-      delete obj[key];
-    }
-  }
-  return obj;
-}
-
 export function safeHydrate(data) {
   // Keep only recognized keys/shape
   const base = blankState();
@@ -83,14 +72,32 @@ export function safeHydrate(data) {
     url: (data.photo?.url || "").toString().trim(),
     dataUrl: data.photo?.dataUrl || "",
   };
-  
-  // Add new fields for features
-  next.sectionVisibility = data.sectionVisibility || {};
-  next.sectionOrder = data.sectionOrder || null;
-  next.theme = data.theme || 'teal';
-  next.template = data.template || 'modern';
-  next.customSections = data.customSections || [];
 
-  stripUnknownTopLevel(next);
+  const defaultVis = getDefaultVisibility();
+  next.sectionVisibility = { ...defaultVis, ...(data.sectionVisibility && typeof data.sectionVisibility === "object" ? data.sectionVisibility : {}) };
+
+  const canonicalOrder = SECTION_CONFIG.map((s) => s.id);
+  const rawOrder = data.sectionOrder;
+  if (Array.isArray(rawOrder) && rawOrder.length) {
+    const seen = new Set();
+    const merged = [];
+    for (const id of rawOrder) {
+      if (typeof id === "string" && canonicalOrder.includes(id) && !seen.has(id)) {
+        seen.add(id);
+        merged.push(id);
+      }
+    }
+    for (const id of canonicalOrder) {
+      if (!seen.has(id)) merged.push(id);
+    }
+    next.sectionOrder = merged;
+  } else {
+    next.sectionOrder = canonicalOrder;
+  }
+
+  next.theme = typeof data.theme === "string" && data.theme.trim() ? data.theme : "teal";
+  next.template = typeof data.template === "string" && data.template.trim() ? data.template : "modern";
+  next.customSections = Array.isArray(data.customSections) ? data.customSections : [];
+
   return next;
 }
