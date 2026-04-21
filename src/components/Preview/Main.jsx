@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { ExternalLink } from "lucide-react";
 import { cleanText, normalizeUrl } from "../../utils/dataHelpers";
 
 const Main = memo(function Main({ state, sectionVisibility, sectionOrder }) {
@@ -42,7 +43,16 @@ const Main = memo(function Main({ state, sectionVisibility, sectionOrder }) {
             <div className="text-sm font-bold">
               {cleanText(proj.title)}
               {proj.url && normalizeUrl(proj.url) ? (
-                <a href={normalizeUrl(proj.url)} target="_blank" rel="noreferrer noopener" className="ml-2 text-xs hover:underline" style={{ color: 'var(--theme-primary)' }}>🔗</a>
+                <a
+                  href={normalizeUrl(proj.url)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="ml-1.5 inline-flex items-center gap-0.5 text-xs hover:underline align-baseline"
+                  style={{ color: "var(--theme-primary)" }}
+                  aria-label={`Open link for ${cleanText(proj.title)}`}
+                >
+                  <ExternalLink className="inline" size={12} strokeWidth={2.5} aria-hidden />
+                </a>
               ) : null}
             </div>
             <div className="text-slate-500 text-xs mt-0.5">{[cleanText(proj.start), cleanText(proj.end)].filter(Boolean).join(" — ")}</div>
@@ -94,7 +104,16 @@ const Main = memo(function Main({ state, sectionVisibility, sectionOrder }) {
             <div className="font-semibold">
               {cleanText(pub.title)}
               {pub.url && normalizeUrl(pub.url) ? (
-                <a href={normalizeUrl(pub.url)} target="_blank" rel="noreferrer noopener" className="ml-1 text-xs hover:underline" style={{ color: 'var(--theme-primary)' }}>🔗</a>
+                <a
+                  href={normalizeUrl(pub.url)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="ml-1 inline-flex items-center gap-0.5 text-xs hover:underline align-baseline"
+                  style={{ color: "var(--theme-primary)" }}
+                  aria-label={`Open publication link for ${cleanText(pub.title)}`}
+                >
+                  <ExternalLink className="inline" size={12} strokeWidth={2.5} aria-hidden />
+                </a>
               ) : null}
             </div>
             <div className="text-slate-600">

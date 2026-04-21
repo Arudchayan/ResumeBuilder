@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useState, lazy, Suspense } from "react";
-import { Upload, Download, Printer, Save, Undo2, Redo2, FileText } from "lucide-react";
+import { Upload, Download, Printer, Save, Undo2, Redo2, FileText, Keyboard } from "lucide-react";
 import { toast } from "sonner";
 import useUndo from "use-undo";
 
@@ -11,20 +11,23 @@ import SectionVisibility from "./components/Controls/SectionVisibility";
 import SectionOrderManager from "./components/Controls/SectionOrderManager";
 import ThemePicker from "./components/Controls/ThemePicker";
 import OnboardingModal from "./components/OnboardingModal";
+import { AboutModal, PrivacyModal, ShortcutsModal } from "./components/ProductModals.jsx";
 
 // Utils
-import { exportToPDF } from "./utils/exportPdf";
-import { exportToDocx } from "./utils/exportDocx";
 import { saveToLocalStorage, loadFromLocalStorage, cleanupOldDrafts } from "./utils/localStorage";
 import { safeHydrate } from "./utils/dataHelpers";
 import { validateImportedResume } from "./utils/validation";
 import { validateResumeData } from "./utils/schema";
+import { shouldDeferGlobalUndoRedo } from "./utils/appKeyboard";
 
 // Constants
 import { blankState } from "./constants/defaultData";
 import { sampleFromYourPDF } from "./constants/sampleData";
 import { getDefaultVisibility, SECTION_CONFIG } from "./constants/sectionConfig";
 import { themes, defaultTheme } from "./constants/themes";
+import { PRODUCT_NAME, PRODUCT_TAGLINE, APP_VERSION } from "./constants/product";
+import { PAPER_PRESETS, getPaperPreset } from "./constants/paper.js";
+import { useResumeExport } from "./hooks/useResumeExport.js";
 
 export default function ResumeBuilder() {
   // Initialize state with undo/redo support
@@ -41,7 +44,7 @@ export default function ResumeBuilder() {
   
   // UI state (not undoable)
   const fileInputRef = useRef(null);
-  const [exporting, setExporting] = useState(null);
+  const sheetRef = useRef(null);
   const [lastSaved, setLastSaved] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const [nowTick, setNowTick] = useState(Date.now());
@@ -50,17 +53,19 @@ export default function ResumeBuilder() {
   const [fontSize, setFontSize] = useState(100);
   const [viewMode, setViewMode] = useState('editor'); // 'editor' | 'preview' for mobile
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [productDialog, setProductDialog] = useState(null);
   const [showPageGuide, setShowPageGuide] = useState(true);
-  const sheetRef = useRef(null);
   const [pageEstimate, setPageEstimate] = useState(1);
 
-  const paperSizes = {
-    a4: { width: 210, height: 297, name: 'A4 (210×297mm)' },
-    letter: { width: 215.9, height: 279.4, name: 'Letter (8.5×11")' },
-    legal: { width: 215.9, height: 355.6, name: 'Legal (8.5×14")' }
-  };
-  
-  const currentPaper = paperSizes[paperSize] || paperSizes.a4;
+  const currentPaper = useMemo(() => getPaperPreset(paperSize), [paperSize]);
+
+  const { exporting, handlePrintPDF, handleExportDocx } = useResumeExport({
+    statePresent: state.present,
+    paperSize,
+    fontSize,
+    contentPadding,
+    sheetRef,
+  });
   const relativeTimeFormatter = useMemo(() => new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }), []);
   const relativeLastSaved = useMemo(() => {
     if (!lastSaved) return null;
@@ -118,7 +123,7 @@ export default function ResumeBuilder() {
       const mainEl = sheetRef.current?.querySelector('main');
       if (!mainEl) return;
       const totalHeight = mainEl.scrollHeight || 0;
-      const estimate = Math.max(1, Math.ceil(totalHeight / (currentPaper.height * mmToPx)));
+      const estimate = Math.max(1, Math.ceil(totalHeight / (currentPaper.heightMm * mmToPx)));
       setPageEstimate(estimate);
     };
     updatePageEstimate();
@@ -129,29 +134,32 @@ export default function ResumeBuilder() {
     const observer = new ResizeObserverCtor(updatePageEstimate);
     observer.observe(mainEl);
     return () => observer.disconnect();
-  }, [state.present, currentPaper.height, fontSize, contentPadding, viewMode]);
+  }, [state.present, currentPaper.heightMm, fontSize, contentPadding, viewMode]);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts (defer when typing in native editable controls)
   useEffect(() => {
     const handleKeyboard = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      if (shouldDeferGlobalUndoRedo(e.target)) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         if (canUndo) {
           undo();
-          toast.info('Undo');
+          toast.info("Undo");
         }
       }
-      if (((e.ctrlKey || e.metaKey) && e.key === 'y') || 
-          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) {
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key === "y") ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
+      ) {
         e.preventDefault();
         if (canRedo) {
           redo();
-          toast.info('Redo');
+          toast.info("Redo");
         }
       }
     };
-    window.addEventListener('keydown', handleKeyboard);
-    return () => window.removeEventListener('keydown', handleKeyboard);
+    window.addEventListener("keydown", handleKeyboard);
+    return () => window.removeEventListener("keydown", handleKeyboard);
   }, [undo, redo, canUndo, canRedo]);
 
   // Action functions
@@ -232,7 +240,7 @@ export default function ResumeBuilder() {
 
   function loadSample() { 
     setState(sampleFromYourPDF());
-    toast.success("Sample resume loaded!");
+    toast.success("Sample resume loaded.");
   }
 
   const dismissOnboarding = () => {
@@ -275,59 +283,29 @@ export default function ResumeBuilder() {
     reader.readAsText(file);
   }
 
-  async function handlePrintPDF() {
-    setExporting('pdf');
-    await exportToPDF(state.present, paperSize, fontSize, contentPadding);
-    setExporting(null);
-  }
+  // Section chrome lives in undoable state.present (theme, order, visibility)
+  const sectionVisibility = state.present.sectionVisibility || getDefaultVisibility();
+  const setSectionVisibility = (nextVis) => {
+    const next = structuredClone(state.present);
+    const base = next.sectionVisibility || getDefaultVisibility();
+    next.sectionVisibility = typeof nextVis === "function" ? nextVis(base) : nextVis;
+    setState(next);
+  };
 
-  async function handleExportDocx() {
-    setExporting('docx');
-    await exportToDocx(state.present);
-    setExporting(null);
-  }
+  const sectionOrder = state.present.sectionOrder || SECTION_CONFIG.map((s) => s.id);
+  const setSectionOrder = (nextOrder) => {
+    const next = structuredClone(state.present);
+    const base = next.sectionOrder || SECTION_CONFIG.map((s) => s.id);
+    next.sectionOrder = typeof nextOrder === "function" ? nextOrder(base) : nextOrder;
+    setState(next);
+  };
 
-  // Section visibility (separate state, not undoable)
-  const [sectionVisibility, setSectionVisibility] = useState(
-    state.present.sectionVisibility || getDefaultVisibility()
-  );
-
-  // Section order (separate state, not undoable)
-  const [sectionOrder, setSectionOrder] = useState(
-    state.present.sectionOrder || SECTION_CONFIG.map(s => s.id)
-  );
-
-  // Theme (separate state, not undoable)
-  const [theme, setTheme] = useState(
-    state.present.theme || defaultTheme
-  );
-
-  // Sync sectionVisibility with state for persistence
-  useEffect(() => {
-    if (JSON.stringify(state.present.sectionVisibility) !== JSON.stringify(sectionVisibility)) {
-      const next = structuredClone(state.present);
-      next.sectionVisibility = sectionVisibility;
-      setState(next);
-    }
-  }, [sectionVisibility, state.present, setState]);
-
-  // Sync sectionOrder with state for persistence
-  useEffect(() => {
-    if (JSON.stringify(state.present.sectionOrder) !== JSON.stringify(sectionOrder)) {
-      const next = structuredClone(state.present);
-      next.sectionOrder = sectionOrder;
-      setState(next);
-    }
-  }, [sectionOrder, state.present, setState]);
-
-  // Sync theme with state for persistence
-  useEffect(() => {
-    if (state.present.theme !== theme) {
-      const next = structuredClone(state.present);
-      next.theme = theme;
-      setState(next);
-    }
-  }, [theme, state.present, setState]);
+  const theme = state.present.theme || defaultTheme;
+  const setTheme = (nextTheme) => {
+    const next = structuredClone(state.present);
+    next.theme = nextTheme;
+    setState(next);
+  };
 
   // Group all actions for passing to children
   const actions = {
@@ -349,7 +327,7 @@ export default function ResumeBuilder() {
   const currentTheme = themes[theme] || themes[defaultTheme];
 
   return (
-    <div className="min-h-screen bg-slate-50" style={{
+    <div className="flex min-h-screen flex-col bg-slate-50" style={{
       '--theme-primary': currentTheme.primary,
       '--theme-dark': currentTheme.dark,
       '--theme-light': currentTheme.light,
@@ -361,14 +339,16 @@ export default function ResumeBuilder() {
         onClose={dismissOnboarding}
         onLoadSample={handleOnboardingLoad}
       />
-      {/* Print styles */}
+      {/* Print styles — @page size follows selected paper (browser support varies) */}
       <style>{`
-        @page { size: A4; margin: 12mm }
+        @page { size: ${currentPaper.pageCss}; margin: 12mm }
         @media print { 
+          .product-chrome { display: none !important; }
           .editor { display: none !important; }
           .sheet { box-shadow: none !important; border: none !important; }
           body { background: transparent !important; }
           .page-break-indicator { display: none !important; }
+          .sheet main > section { break-inside: avoid; page-break-inside: avoid; }
         }
         .overflow-wrap-anywhere {
           overflow-wrap: anywhere;
@@ -380,7 +360,44 @@ export default function ResumeBuilder() {
         }
       `}</style>
 
-      <div className="mx-auto max-w-[1480px] p-4">
+      <a href="#main-application" className="skip-to-content">
+        Skip to main content
+      </a>
+
+      <header className="product-chrome sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1480px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-base font-semibold tracking-tight text-slate-900">{PRODUCT_NAME}</h1>
+            <p className="text-xs text-slate-500">{PRODUCT_TAGLINE}</p>
+          </div>
+          <nav className="flex flex-wrap items-center gap-1 text-xs" aria-label="Product help">
+            <button
+              type="button"
+              onClick={() => setProductDialog("about")}
+              className="rounded-lg px-2.5 py-1.5 font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              About
+            </button>
+            <button
+              type="button"
+              onClick={() => setProductDialog("privacy")}
+              className="rounded-lg px-2.5 py-1.5 font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              Privacy
+            </button>
+            <button
+              type="button"
+              onClick={() => setProductDialog("shortcuts")}
+              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Keyboard className="inline" size={14} aria-hidden />
+              Shortcuts
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      <div id="main-application" className="mx-auto w-full max-w-[1480px] flex-1 p-4">
         {/* Mobile view toggle */}
         <div className="lg:hidden mb-3 flex items-center gap-2">
           <button
@@ -402,7 +419,7 @@ export default function ResumeBuilder() {
         <div className={`editor rounded-2xl border bg-white shadow-sm overflow-hidden ${viewMode==='preview' ? 'hidden' : ''} lg:block`}>
           <div className="flex items-center justify-between border-b p-3">
             <div>
-              <h2 className="text-sm font-bold tracking-wide">Resume Builder</h2>
+              <h2 className="text-sm font-bold tracking-wide">{PRODUCT_NAME}</h2>
               <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                 <span className={`inline-flex h-2 w-2 rounded-full ${isDirty ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} aria-hidden />
                 <Save size={12} />
@@ -413,28 +430,32 @@ export default function ResumeBuilder() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button 
-                disabled={!canUndo} 
-                className={`px-3 py-2 rounded-xl border text-sm ${!canUndo ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`} 
+              <button
+                type="button"
+                disabled={!canUndo}
+                className={`px-3 py-2 rounded-xl border text-sm ${!canUndo ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}
                 onClick={undo}
                 title="Undo (Ctrl+Z)"
+                aria-label="Undo résumé change"
               >
-                <Undo2 className="inline -mt-1" size={16}/>
+                <Undo2 className="inline -mt-1" size={16} aria-hidden />
               </button>
-              <button 
-                disabled={!canRedo} 
-                className={`px-3 py-2 rounded-xl border text-sm ${!canRedo ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`} 
+              <button
+                type="button"
+                disabled={!canRedo}
+                className={`px-3 py-2 rounded-xl border text-sm ${!canRedo ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}
                 onClick={redo}
                 title="Redo (Ctrl+Y)"
+                aria-label="Redo résumé change"
               >
-                <Redo2 className="inline -mt-1" size={16}/>
+                <Redo2 className="inline -mt-1" size={16} aria-hidden />
               </button>
               <div className="border-l mx-1" />
               <button 
                 className="px-3 py-2 rounded-xl border text-sm hover:bg-slate-50 transition-colors active:scale-95" 
                 onClick={loadSample}
               >
-                Load Sample
+                Load sample resume
               </button>
               <button 
                 className="px-3 py-2 rounded-xl border text-sm hover:bg-slate-50 transition-colors active:scale-95" 
@@ -481,7 +502,7 @@ export default function ResumeBuilder() {
             setTheme={setTheme}
           />
 
-          <Suspense fallback={<div className="p-4 text-sm text-slate-600">Loading editor…</div>}>
+          <Suspense fallback={<div className="p-4 text-sm text-slate-600" role="status" aria-live="polite">Loading editor…</div>}>
             <EditorPanelWithDnd 
               state={state.present} 
               actions={actions} 
@@ -505,32 +526,36 @@ export default function ResumeBuilder() {
             <div className="flex flex-wrap items-center gap-4 text-xs">
               <div className="flex items-center gap-2">
                 <label className="text-slate-600 font-medium">Paper Size:</label>
-                <select 
-                  value={paperSize} 
+                <select
+                  value={paperSize}
                   onChange={(e) => {
-                    setPaperSize(e.target.value);
-                    toast.success(`Preview size changed to ${paperSizes[e.target.value].name}`);
+                    const v = e.target.value;
+                    setPaperSize(v);
+                    toast.success(`Preview size changed to ${getPaperPreset(v).name}`);
                   }}
                   className="text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-teal-400"
                 >
-                  <option value="a4">A4 (210×297mm)</option>
-                  <option value="letter">Letter (8.5×11&quot;)</option>
-                  <option value="legal">Legal (8.5×14&quot;)</option>
+                  {Object.entries(PAPER_PRESETS).map(([id, p]) => (
+                    <option key={id} value={id}>
+                      {p.name}
+                    </option>
+                  ))}
                 </select>
               </div>
-              
+
               <div className="flex items-center gap-2">
-                <label className="text-slate-600 font-medium">Margins:</label>
-                <input 
-                  type="range" 
-                  min="24" 
-                  max="72" 
+                <label className="text-slate-600 font-medium">Padding:</label>
+                <input
+                  type="range"
+                  min="24"
+                  max="72"
                   step="4"
                   value={contentPadding}
                   onChange={(e) => setContentPadding(Number(e.target.value))}
                   className="w-24"
+                  aria-valuetext={`${contentPadding} pixels`}
                 />
-                <span className="text-slate-500 min-w-[60px]">{Math.round(contentPadding / 4)}mm</span>
+                <span className="text-slate-500 min-w-[52px]">{contentPadding}px</span>
               </div>
               
               <div className="flex flex-col gap-1">
@@ -589,19 +614,19 @@ export default function ResumeBuilder() {
           </div>
           
           <div className="p-4 bg-slate-100">
-            <div ref={sheetRef} className="sheet mx-auto border shadow-lg relative" style={{ width: `${currentPaper.width}mm`, minHeight: `${currentPaper.height}mm`, background: "white", fontSize: `${fontSize}%` }}>
+            <div ref={sheetRef} className="sheet mx-auto border shadow-lg relative" style={{ width: `${currentPaper.widthMm}mm`, minHeight: `${currentPaper.heightMm}mm`, background: "white", fontSize: `${fontSize}%` }}>
               {/* Page break indicator */}
               {showPageGuide && (
                 <div 
                   className="page-break-indicator absolute left-0 right-0 border-b-2 border-dashed border-red-400 pointer-events-none z-10" 
-                  style={{ top: `${currentPaper.height}mm` }}
+                  style={{ top: `${currentPaper.heightMm}mm` }}
                 >
-                  <div className="absolute right-2 -top-3 bg-red-400 text-white text-[10px] px-2 py-0.5 rounded shadow-md">
-                    📄 Page 1 ends here
+                  <div className="absolute right-2 -top-3 bg-red-500/95 text-white text-[10px] px-2 py-0.5 rounded shadow-md font-medium">
+                    First page ends here
                   </div>
                 </div>
               )}
-              <div className="grid grid-cols-[30%_1fr]" style={{ minHeight: `${currentPaper.height}mm` }}>
+              <div className="grid grid-cols-[30%_1fr]" style={{ minHeight: `${currentPaper.heightMm}mm` }}>
                 <aside className="border-r" style={{ padding: `${contentPadding}px ${contentPadding * 0.667}px`, background: `linear-gradient(180deg, var(--theme-gradient-from) 0%, var(--theme-gradient-to) 100%)` }}>
                   <Aside state={state.present} sectionVisibility={sectionVisibility} />
                 </aside>
@@ -614,6 +639,23 @@ export default function ResumeBuilder() {
         </div>
         </div>
       </div>
+
+      <footer className="product-chrome border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
+        <p>
+          {PRODUCT_NAME} · v{APP_VERSION} · Your content stays in this browser ·{" "}
+          <button
+            type="button"
+            className="font-medium text-teal-700 underline decoration-teal-200 underline-offset-2 hover:text-teal-800"
+            onClick={() => setProductDialog("privacy")}
+          >
+            Privacy
+          </button>
+        </p>
+      </footer>
+
+      {productDialog === "about" && <AboutModal onClose={() => setProductDialog(null)} />}
+      {productDialog === "privacy" && <PrivacyModal onClose={() => setProductDialog(null)} />}
+      {productDialog === "shortcuts" && <ShortcutsModal onClose={() => setProductDialog(null)} />}
     </div>
   );
 }

@@ -1,7 +1,12 @@
 {
   "name": "resume-builder",
-  "version": "1.0.0",
-  "description": "A modern, interactive Resume Builder with live preview and PDF export",
+  "version": "1.1.0",
+  "description": "Client-side résumé editor: live preview, JSON backup, PDF and DOCX export. No account required.",
+  "homepage": "https://Arudchayan.github.io/ResumeBuilder/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Arudchayan/ResumeBuilder.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +15,8 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -29,6 +35,8 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

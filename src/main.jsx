@@ -9,7 +9,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <ResumeBuilder />
-      <Toaster position="top-right" richColors />
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        duration={4500}
+        toastOptions={{ classNames: { title: 'font-medium', description: 'text-slate-600' } }}
+      />
     </ErrorBoundary>
   </React.StrictMode>,
 )

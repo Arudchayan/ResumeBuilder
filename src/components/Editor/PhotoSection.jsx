@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { toast } from "sonner";
 import Section from "../UI/Section";
 import Label from "../UI/Label";
@@ -5,6 +6,9 @@ import Input from "../UI/Input";
 import { validateImageFile, validateImageDimensions } from "../../utils/validation";
 
 export default function PhotoSection({ state, updatePhoto }) {
+  const showPhotoId = useId();
+  const fileInputId = useId();
+  const urlId = useId();
   const handlePhotoFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -30,7 +34,7 @@ export default function PhotoSection({ state, updatePhoto }) {
       const reader = new FileReader();
       reader.onload = () => { 
         updatePhoto('dataUrl', reader.result);
-        toast.success('Photo uploaded successfully!');
+        toast.success("Photo uploaded.");
       };
       reader.readAsDataURL(file);
     };
@@ -47,30 +51,35 @@ export default function PhotoSection({ state, updatePhoto }) {
   return (
     <Section title="Photo (optional)">
       <div className="flex items-center gap-2">
-        <input 
-          type="checkbox" 
-          checked={!!state.photo?.enabled} 
-          onChange={e => updatePhoto('enabled', e.target.checked)} 
+        <input
+          id={showPhotoId}
+          type="checkbox"
+          checked={!!state.photo?.enabled}
+          onChange={(e) => updatePhoto("enabled", e.target.checked)}
         />
-        <Label className="!mb-0">Show photo</Label>
+        <Label htmlFor={showPhotoId} className="!mb-0">
+          Show photo
+        </Label>
       </div>
       {state.photo?.enabled ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
           <div>
-            <Label>Upload image</Label>
-            <input 
-              type="file" 
-              accept="image/*" 
-              onChange={handlePhotoFile} 
-              className="block w-full text-sm" 
+            <Label htmlFor={fileInputId}>Upload image</Label>
+            <input
+              id={fileInputId}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoFile}
+              className="block w-full text-sm"
             />
           </div>
           <div>
-            <Label>OR Image URL</Label>
-            <Input 
-              value={state.photo?.url || ""} 
-              onChange={e => updatePhoto('url', e.target.value)} 
-              placeholder="https://example.com/photo.jpg" 
+            <Label htmlFor={urlId}>OR Image URL</Label>
+            <Input
+              id={urlId}
+              value={state.photo?.url || ""}
+              onChange={(e) => updatePhoto("url", e.target.value)}
+              placeholder="https://example.com/photo.jpg"
             />
           </div>
         </div>

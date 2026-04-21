@@ -49,12 +49,12 @@ export default class ErrorBoundary extends Component {
 
             {/* Error Title */}
             <h1 className="text-2xl font-bold text-center text-slate-900 mb-3">
-              Oops! Something went wrong
+              Something went wrong
             </h1>
 
             {/* Error Message */}
             <p className="text-slate-600 text-center mb-6">
-              {this.state.error?.message || 'An unexpected error occurred while building your resume.'}
+              {this.state.error?.message || 'The application hit an unexpected error. Your work may still be in this browser session if autosave ran; export JSON as a backup before reloading.'}
             </p>
 
             {/* Error Details (Development Only) */}

@@ -1,6 +1,7 @@
 import DOMPurify from "dompurify";
 import { blankState } from "../constants/defaultData";
 import { logger } from "./logger";
+import { resumeSchema } from "./schema.js";
 
 export function cleanText(s){ 
   const text = (s ?? "").toString().replace(/\s+/g, " ").trim();
@@ -43,6 +44,17 @@ export function formatLocation(s){
   return x;
 }
 
+const ALLOWED_TOP_LEVEL = new Set(Object.keys(resumeSchema.shape));
+
+function stripUnknownTopLevel(obj) {
+  for (const key of Object.keys(obj)) {
+    if (!ALLOWED_TOP_LEVEL.has(key)) {
+      delete obj[key];
+    }
+  }
+  return obj;
+}
+
 export function safeHydrate(data) {
   // Keep only recognized keys/shape
   const base = blankState();
@@ -78,6 +90,7 @@ export function safeHydrate(data) {
   next.theme = data.theme || 'teal';
   next.template = data.template || 'modern';
   next.customSections = data.customSections || [];
-  
+
+  stripUnknownTopLevel(next);
   return next;
 }

@@ -18,6 +18,7 @@ dist-ssr
 *.local
 
 # Editor directories and files
+.cursor
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -37,11 +38,15 @@ dist-ssr
 
 # Testing
 coverage
+test-results
+playwright-report
 
 # Misc
 .cache
 .temp
 .tmp
+# Local JSON exports (often contain PII)
+resume.json
 Arudchayan_Pirabaharan.pdf
 
 # Backup files

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanText, normalizeUrl, formatLocation } from '../dataHelpers';
+import { cleanText, normalizeUrl, formatLocation, safeHydrate } from '../dataHelpers';
 
 describe('dataHelpers', () => {
   describe('cleanText', () => {
@@ -83,6 +83,17 @@ describe('dataHelpers', () => {
       // This is acceptable as it's cleaned during display
       expect(formatLocation('New York, NY')).toBe('New York, NY');
       expect(formatLocation('Paris,  France')).toBe('Paris, France');
+    });
+  });
+
+  describe('safeHydrate', () => {
+    it('strips unknown top-level keys from imported data', () => {
+      const out = safeHydrate({
+        name: "Ada",
+        evilPayload: { nested: true },
+      });
+      expect(out.name).toBe("Ada");
+      expect("evilPayload" in out).toBe(false);
     });
   });
 });

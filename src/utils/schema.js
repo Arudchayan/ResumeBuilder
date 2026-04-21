@@ -130,7 +130,7 @@ export const resumeSchema = z.object({
     })
     .optional()
     .default({ enabled: false, url: "", dataUrl: "" }),
-  sectionVisibility: z.record(z.boolean()).optional().default({}),
+  sectionVisibility: z.record(z.string(), z.boolean()).optional().default({}),
   sectionOrder: z.array(z.string()).nullable().optional().default(null),
   theme: z.string().optional().default('teal'),
   template: z.string().optional().default('modern'),

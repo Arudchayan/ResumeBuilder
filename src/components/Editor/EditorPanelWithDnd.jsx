@@ -12,6 +12,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { useId } from "react";
 import { toast } from 'sonner';
 
 import SortableSection from './SortableSection';
@@ -43,6 +44,8 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
     updateBullet,
     removeBullet
   } = actions;
+
+  const formId = useId();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -120,32 +123,32 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
               <Row key={idx} title="Project" onRemove={() => removeRow("projects", idx)}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label>Project Title</Label>
-                    <Input value={proj.title} onChange={e=>{ const next = structuredClone(state); next.projects[idx].title = e.target.value; setState(next); }} maxLength={100}/>
+                    <Label htmlFor={`${formId}-proj-${idx}-title`}>Project Title</Label>
+                    <Input id={`${formId}-proj-${idx}-title`} value={proj.title} onChange={e=>{ const next = structuredClone(state); next.projects[idx].title = e.target.value; setState(next); }} maxLength={100}/>
                   </div>
                   <div>
-                    <Label>Project URL (optional)</Label>
-                    <Input value={proj.url} onChange={e=>{ const next = structuredClone(state); next.projects[idx].url = e.target.value; setState(next); }} placeholder="https://github.com/..."/>
+                    <Label htmlFor={`${formId}-proj-${idx}-url`}>Project URL (optional)</Label>
+                    <Input id={`${formId}-proj-${idx}-url`} value={proj.url} onChange={e=>{ const next = structuredClone(state); next.projects[idx].url = e.target.value; setState(next); }} placeholder="https://github.com/..."/>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                   <div>
-                    <Label>Start Date</Label>
-                    <Input value={proj.start} onChange={e=>{ const next = structuredClone(state); next.projects[idx].start = e.target.value; setState(next); }} placeholder="e.g., Jan 2024"/>
+                    <Label htmlFor={`${formId}-proj-${idx}-start`}>Start Date</Label>
+                    <Input id={`${formId}-proj-${idx}-start`} value={proj.start} onChange={e=>{ const next = structuredClone(state); next.projects[idx].start = e.target.value; setState(next); }} placeholder="e.g., Jan 2024"/>
                   </div>
                   <div>
-                    <Label>End Date</Label>
-                    <Input value={proj.end} onChange={e=>{ const next = structuredClone(state); next.projects[idx].end = e.target.value; setState(next); }} placeholder="e.g., Present"/>
+                    <Label htmlFor={`${formId}-proj-${idx}-end`}>End Date</Label>
+                    <Input id={`${formId}-proj-${idx}-end`} value={proj.end} onChange={e=>{ const next = structuredClone(state); next.projects[idx].end = e.target.value; setState(next); }} placeholder="e.g., Present"/>
                   </div>
                 </div>
                 <div className="mt-3">
-                  <Label>Description</Label>
-                  <Textarea value={proj.description} onChange={e=>{ const next = structuredClone(state); next.projects[idx].description = e.target.value; setState(next); }} placeholder="Brief description of the project" maxLength={300}/>
+                  <Label htmlFor={`${formId}-proj-${idx}-desc`}>Description</Label>
+                  <Textarea id={`${formId}-proj-${idx}-desc`} value={proj.description} onChange={e=>{ const next = structuredClone(state); next.projects[idx].description = e.target.value; setState(next); }} placeholder="Brief description of the project" maxLength={300}/>
                   <div className="text-xs text-slate-500 mt-1">{proj.description?.length || 0}/300 characters</div>
                 </div>
                 <div className="mt-3">
-                  <Label>Technologies Used</Label>
-                  <Input value={proj.tech} onChange={e=>{ const next = structuredClone(state); next.projects[idx].tech = e.target.value; setState(next); }} placeholder="e.g., React, Node.js, MongoDB" maxLength={150}/>
+                  <Label htmlFor={`${formId}-proj-${idx}-tech`}>Technologies Used</Label>
+                  <Input id={`${formId}-proj-${idx}-tech`} value={proj.tech} onChange={e=>{ const next = structuredClone(state); next.projects[idx].tech = e.target.value; setState(next); }} placeholder="e.g., React, Node.js, MongoDB" maxLength={150}/>
                 </div>
               </Row>
             ))}
@@ -162,16 +165,16 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
               <Row key={idx} title="Certification" onRemove={() => removeRow("certs", idx)}>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <Label>Title</Label>
-                    <Input value={c.title} onChange={e=>{ const next = structuredClone(state); next.certs[idx].title = e.target.value; setState(next); }} />
+                    <Label htmlFor={`${formId}-cert-${idx}-title`}>Title</Label>
+                    <Input id={`${formId}-cert-${idx}-title`} value={c.title} onChange={e=>{ const next = structuredClone(state); next.certs[idx].title = e.target.value; setState(next); }} />
                   </div>
                   <div>
-                    <Label>Issuer</Label>
-                    <Input value={c.org} onChange={e=>{ const next = structuredClone(state); next.certs[idx].org = e.target.value; setState(next); }} />
+                    <Label htmlFor={`${formId}-cert-${idx}-org`}>Issuer</Label>
+                    <Input id={`${formId}-cert-${idx}-org`} value={c.org} onChange={e=>{ const next = structuredClone(state); next.certs[idx].org = e.target.value; setState(next); }} />
                   </div>
                   <div>
-                    <Label>Date/Year</Label>
-                    <Input value={c.when} onChange={e=>{ const next = structuredClone(state); next.certs[idx].when = e.target.value; setState(next); }} />
+                    <Label htmlFor={`${formId}-cert-${idx}-when`}>Date/Year</Label>
+                    <Input id={`${formId}-cert-${idx}-when`} value={c.when} onChange={e=>{ const next = structuredClone(state); next.certs[idx].when = e.target.value; setState(next); }} />
                   </div>
                 </div>
               </Row>
@@ -189,17 +192,17 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
               <Row key={idx} title="Education" onRemove={() => removeRow("edus", idx)}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label>Degree / Program</Label>
-                    <Input value={ed.degree} onChange={e=>{ const next = structuredClone(state); next.edus[idx].degree = e.target.value; setState(next); }} />
+                    <Label htmlFor={`${formId}-edu-${idx}-degree`}>Degree / Program</Label>
+                    <Input id={`${formId}-edu-${idx}-degree`} value={ed.degree} onChange={e=>{ const next = structuredClone(state); next.edus[idx].degree = e.target.value; setState(next); }} />
                   </div>
                   <div>
-                    <Label>Institution</Label>
-                    <Input value={ed.school} onChange={e=>{ const next = structuredClone(state); next.edus[idx].school = e.target.value; setState(next); }} />
+                    <Label htmlFor={`${formId}-edu-${idx}-school`}>Institution</Label>
+                    <Input id={`${formId}-edu-${idx}-school`} value={ed.school} onChange={e=>{ const next = structuredClone(state); next.edus[idx].school = e.target.value; setState(next); }} />
                   </div>
                 </div>
                 <div>
-                  <Label>Dates (e.g., 2018 — 2021)</Label>
-                  <Input value={ed.when} onChange={e=>{ const next = structuredClone(state); next.edus[idx].when = e.target.value; setState(next); }} />
+                  <Label htmlFor={`${formId}-edu-${idx}-when`}>Dates (e.g., 2018 — 2021)</Label>
+                  <Input id={`${formId}-edu-${idx}-when`} value={ed.when} onChange={e=>{ const next = structuredClone(state); next.edus[idx].when = e.target.value; setState(next); }} />
                 </div>
               </Row>
             ))}
@@ -216,12 +219,12 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
               <Row key={idx} title="Language" onRemove={() => removeRow("languages", idx)}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label>Language</Label>
-                    <Input value={lang.name} onChange={e=>{ const next = structuredClone(state); next.languages[idx].name = e.target.value; setState(next); }} placeholder="e.g., English"/>
+                    <Label htmlFor={`${formId}-lang-${idx}-name`}>Language</Label>
+                    <Input id={`${formId}-lang-${idx}-name`} value={lang.name} onChange={e=>{ const next = structuredClone(state); next.languages[idx].name = e.target.value; setState(next); }} placeholder="e.g., English"/>
                   </div>
                   <div>
-                    <Label>Proficiency Level</Label>
-                    <Input value={lang.level} onChange={e=>{ const next = structuredClone(state); next.languages[idx].level = e.target.value; setState(next); }} placeholder="e.g., Native, Fluent, Intermediate"/>
+                    <Label htmlFor={`${formId}-lang-${idx}-level`}>Proficiency Level</Label>
+                    <Input id={`${formId}-lang-${idx}-level`} value={lang.level} onChange={e=>{ const next = structuredClone(state); next.languages[idx].level = e.target.value; setState(next); }} placeholder="e.g., Native, Fluent, Intermediate"/>
                   </div>
                 </div>
               </Row>
@@ -239,22 +242,22 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
               <Row key={idx} title="Publication" onRemove={() => removeRow("publications", idx)}>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <Label>Title</Label>
-                    <Input value={pub.title} onChange={e=>{ const next = structuredClone(state); next.publications[idx].title = e.target.value; setState(next); }} placeholder="Paper or article title" maxLength={150}/>
+                    <Label htmlFor={`${formId}-pub-${idx}-title`}>Title</Label>
+                    <Input id={`${formId}-pub-${idx}-title`} value={pub.title} onChange={e=>{ const next = structuredClone(state); next.publications[idx].title = e.target.value; setState(next); }} placeholder="Paper or article title" maxLength={150}/>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label>Publisher/Venue</Label>
-                      <Input value={pub.publisher} onChange={e=>{ const next = structuredClone(state); next.publications[idx].publisher = e.target.value; setState(next); }} placeholder="Journal, conference, etc."/>
+                      <Label htmlFor={`${formId}-pub-${idx}-publisher`}>Publisher/Venue</Label>
+                      <Input id={`${formId}-pub-${idx}-publisher`} value={pub.publisher} onChange={e=>{ const next = structuredClone(state); next.publications[idx].publisher = e.target.value; setState(next); }} placeholder="Journal, conference, etc."/>
                     </div>
                     <div>
-                      <Label>Date</Label>
-                      <Input value={pub.when} onChange={e=>{ const next = structuredClone(state); next.publications[idx].when = e.target.value; setState(next); }} placeholder="e.g., 2024"/>
+                      <Label htmlFor={`${formId}-pub-${idx}-when`}>Date</Label>
+                      <Input id={`${formId}-pub-${idx}-when`} value={pub.when} onChange={e=>{ const next = structuredClone(state); next.publications[idx].when = e.target.value; setState(next); }} placeholder="e.g., 2024"/>
                     </div>
                   </div>
                   <div>
-                    <Label>URL (optional)</Label>
-                    <Input value={pub.url} onChange={e=>{ const next = structuredClone(state); next.publications[idx].url = e.target.value; setState(next); }} placeholder="https://doi.org/..."/>
+                    <Label htmlFor={`${formId}-pub-${idx}-url`}>URL (optional)</Label>
+                    <Input id={`${formId}-pub-${idx}-url`} value={pub.url} onChange={e=>{ const next = structuredClone(state); next.publications[idx].url = e.target.value; setState(next); }} placeholder="https://doi.org/..."/>
                   </div>
                 </div>
               </Row>
@@ -272,16 +275,16 @@ export default function EditorPanelWithDnd({ state, actions, sectionVisibility, 
               <Row key={idx} title="Award" onRemove={() => removeRow("awards", idx)}>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <Label>Award Title</Label>
-                    <Input value={award.title} onChange={e=>{ const next = structuredClone(state); next.awards[idx].title = e.target.value; setState(next); }} maxLength={100}/>
+                    <Label htmlFor={`${formId}-award-${idx}-title`}>Award Title</Label>
+                    <Input id={`${formId}-award-${idx}-title`} value={award.title} onChange={e=>{ const next = structuredClone(state); next.awards[idx].title = e.target.value; setState(next); }} maxLength={100}/>
                   </div>
                   <div>
-                    <Label>Issuing Organization</Label>
-                    <Input value={award.issuer} onChange={e=>{ const next = structuredClone(state); next.awards[idx].issuer = e.target.value; setState(next); }}/>
+                    <Label htmlFor={`${formId}-award-${idx}-issuer`}>Issuing Organization</Label>
+                    <Input id={`${formId}-award-${idx}-issuer`} value={award.issuer} onChange={e=>{ const next = structuredClone(state); next.awards[idx].issuer = e.target.value; setState(next); }}/>
                   </div>
                   <div>
-                    <Label>Date/Year</Label>
-                    <Input value={award.when} onChange={e=>{ const next = structuredClone(state); next.awards[idx].when = e.target.value; setState(next); }}/>
+                    <Label htmlFor={`${formId}-award-${idx}-when`}>Date/Year</Label>
+                    <Input id={`${formId}-award-${idx}-when`} value={award.when} onChange={e=>{ const next = structuredClone(state); next.awards[idx].when = e.target.value; setState(next); }}/>
                   </div>
                 </div>
               </Row>

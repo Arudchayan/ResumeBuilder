@@ -19,4 +19,14 @@ describe('Label Component', () => {
     const label = container.querySelector('label');
     expect(label).toBeInTheDocument();
   });
+
+  it('should set htmlFor when provided', () => {
+    render(
+      <>
+        <Label htmlFor="field-1">Name</Label>
+        <input id="field-1" />
+      </>
+    );
+    expect(screen.getByLabelText('Name')).toBeInTheDocument();
+  });
 });

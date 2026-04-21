@@ -22,11 +22,10 @@ export async function exportToDocx(state) {
       );
     }
 
-    // Headline
+    // Headline (single TextRun — avoid duplicate text + children on same Paragraph)
     if (state.headline) {
       children.push(
         new Paragraph({
-          text: cleanText(state.headline),
           alignment: AlignmentType.CENTER,
           spacing: { after: 200 },
           children: [
