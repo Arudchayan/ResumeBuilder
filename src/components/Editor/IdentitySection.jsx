@@ -36,10 +36,10 @@ export default function IdentitySection({ state, update }) {
         id={summaryId}
         value={state.summary} 
         onChange={e => update("summary", e.target.value)} 
-        placeholder="2–3 sentences that sell your value" 
-        maxLength={500}
+        placeholder="2–3 short paragraphs that sell your value" 
+        maxLength={2000}
       />
-      <div className="text-xs text-slate-500 mt-1">{state.summary?.length || 0}/500 characters</div>
+      <div className="text-xs text-slate-500 mt-1">{state.summary?.length || 0}/2000 characters</div>
     </Section>
   );
 }
