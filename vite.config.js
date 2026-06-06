@@ -12,6 +12,16 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
-  }
+    // Smaller deploy; use browser devtools without maps in prod
+    sourcemap: false,
+    // html2canvas + jsPDF chunk is large by design (loaded only on PDF export)
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+        },
+      },
+    },
+  },
 })
