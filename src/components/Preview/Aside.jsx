@@ -17,8 +17,8 @@ const Aside = memo(function Aside({ state, sectionVisibility }) {
         <>
           <h4 className="text-[12px] uppercase tracking-[0.18em] font-extrabold mb-2" style={{ color: 'var(--theme-dark)' }}>Details</h4>
           <KV k="Location" v={formatLocation(state.contact.location)} />
-          <KV k="Phone" v={state.contact.phone} />
-          <KV k="Email" v={state.contact.email} />
+          <KV k="Phone" v={state.contact.phone} tel={state.contact.phone} />
+          <KV k="Email" v={state.contact.email} mailto={state.contact.email} />
         </>
       )}
 
@@ -62,15 +62,32 @@ const Aside = memo(function Aside({ state, sectionVisibility }) {
   );
 });
 
-const KV = memo(function KV({ k, v, href }) {
+const KV = memo(function KV({ k, v, href, mailto, tel }) {
   const text = cleanText(v);
   if (!text) return null;
+  let linkHref = href;
+  if (!linkHref && mailto && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanText(mailto))) {
+    linkHref = `mailto:${cleanText(mailto)}`;
+  }
+  if (!linkHref && tel) {
+    const compact = cleanText(tel).replace(/[^\d+]/g, "");
+    if (compact.length >= 5) linkHref = `tel:${compact}`;
+  }
   return (
     <div className="text-[12px] text-slate-800 my-2">
       <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">{k}</div>
       <div className="break-all overflow-wrap-anywhere leading-relaxed">
-        {href ? (
-          <a href={href} target="_blank" rel="noreferrer" className="hover:underline" style={{ color: 'var(--theme-primary)' }}>{text}</a>
+        {linkHref ? (
+          <a
+            href={linkHref}
+            {...(linkHref.startsWith("http")
+              ? { target: "_blank", rel: "noreferrer noopener" }
+              : {})}
+            className="hover:underline"
+            style={{ color: 'var(--theme-primary)' }}
+          >
+            {text}
+          </a>
         ) : (
           <span>{text}</span>
         )}
