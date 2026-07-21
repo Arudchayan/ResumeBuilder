@@ -27,4 +27,6 @@ test("import legacy resume json", async ({ page }) => {
   await fileInput.setInputFiles(path.join(here, "fixtures/arudchayan-resume.json"));
   await expect(page.getByLabel("Preview")).toContainText("Arudchayan Pirabaharan", { timeout: 10000 });
   await expect(page.getByLabel("Preview")).toContainText("Employment History");
+  await expect(page.getByLabel("Preview")).toContainText("Details");
+  await expect(page.getByLabel("Preview")).toContainText("Profile");
 });

@@ -5,6 +5,7 @@ export const themes = {
     dark: "#0f766e",
     light: "#5eead4",
     surface: "#f0f8f9",
+    gradient: ["#f7fbfb", "#f0f8f9"] as [string, string],
   },
   blue: {
     name: "Professional Blue",
@@ -12,6 +13,7 @@ export const themes = {
     dark: "#1e40af",
     light: "#93c5fd",
     surface: "#eff6ff",
+    gradient: ["#eff6ff", "#dbeafe"] as [string, string],
   },
   purple: {
     name: "Creative Purple",
@@ -19,6 +21,7 @@ export const themes = {
     dark: "#7e22ce",
     light: "#d8b4fe",
     surface: "#faf5ff",
+    gradient: ["#faf5ff", "#f3e8ff"] as [string, string],
   },
   green: {
     name: "Nature Green",
@@ -26,6 +29,7 @@ export const themes = {
     dark: "#15803d",
     light: "#86efac",
     surface: "#f0fdf4",
+    gradient: ["#f0fdf4", "#dcfce7"] as [string, string],
   },
   slate: {
     name: "Classic Gray",
@@ -33,6 +37,7 @@ export const themes = {
     dark: "#334155",
     light: "#cbd5e1",
     surface: "#f8fafc",
+    gradient: ["#f8fafc", "#f1f5f9"] as [string, string],
   },
   forest: {
     name: "Forest",
@@ -40,6 +45,7 @@ export const themes = {
     dark: "#14532d",
     light: "#86efac",
     surface: "#f0fdf4",
+    gradient: ["#f0fdf4", "#dcfce7"] as [string, string],
   },
   copper: {
     name: "Copper",
@@ -47,6 +53,7 @@ export const themes = {
     dark: "#78350f",
     light: "#fcd34d",
     surface: "#fffbeb",
+    gradient: ["#fffbeb", "#fef3c7"] as [string, string],
   },
   black: {
     name: "Executive Black",
@@ -54,6 +61,7 @@ export const themes = {
     dark: "#030712",
     light: "#6b7280",
     surface: "#f9fafb",
+    gradient: ["#f9fafb", "#f3f4f6"] as [string, string],
   },
 } as const;
 
@@ -67,5 +75,7 @@ export function themeCssVars(themeId: string): Record<string, string> {
     "--theme-dark": theme.dark,
     "--theme-light": theme.light,
     "--theme-surface": theme.surface,
+    "--theme-gradient-from": theme.gradient[0],
+    "--theme-gradient-to": theme.gradient[1],
   };
 }

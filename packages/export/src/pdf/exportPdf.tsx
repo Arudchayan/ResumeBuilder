@@ -1,3 +1,5 @@
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
 import {
   Document,
@@ -7,75 +9,172 @@ import {
   StyleSheet,
   pdf,
   Link,
-  Image,
 } from "@react-pdf/renderer";
 import type { ResumeDocument } from "@resume/core";
-import { documentToIr, type IrBlock, type LayoutIr } from "@resume/templates";
+import { documentToIr, type IrBlock } from "@resume/templates";
 import { themes, type ThemeId } from "@resume/ui";
 
-function stylesFor(themeId: string, sidebar: boolean) {
+/**
+ * Classic sidebar PDF: capture the live `.sheet` DOM (same path as the old builder)
+ * so preview and PDF match. Falls back to react-pdf for ATS/compact.
+ */
+export async function exportPdfFromSheet(
+  sheetRoot: HTMLElement,
+  options: {
+    name?: string;
+    widthMm?: number;
+    heightMm?: number;
+    fontScale?: number;
+    contentPadding?: number;
+  } = {},
+): Promise<Blob> {
+  const widthMm = options.widthMm ?? 210;
+  const heightMm = options.heightMm ?? 297;
+  const fontScale = options.fontScale ?? 100;
+  const contentPadding = options.contentPadding ?? 48;
+
+  const root =
+    (document.querySelector(".min-h-screen") as HTMLElement | null) || document.body;
+  const cs = getComputedStyle(root);
+  const themeColors = {
+    primary: cs.getPropertyValue("--theme-primary").trim() || "#14b8a6",
+    dark: cs.getPropertyValue("--theme-dark").trim() || "#0f766e",
+    light: cs.getPropertyValue("--theme-light").trim() || "#5eead4",
+    gradientFrom: cs.getPropertyValue("--theme-gradient-from").trim() || "#f7fbfb",
+    gradientTo: cs.getPropertyValue("--theme-gradient-to").trim() || "#f0f8f9",
+  };
+
+  await document.fonts?.ready;
+
+  const pdfDoc = new jsPDF("p", "mm", "a4");
+  const pageWidth = pdfDoc.internal.pageSize.getWidth();
+  const pageHeight = pdfDoc.internal.pageSize.getHeight();
+  const mmToPx = 3.7795275591;
+  const pageHeightPx = pageHeight * mmToPx;
+
+  const applyThemeColors = (element: HTMLElement) => {
+    const aside = element.querySelector("aside");
+    if (aside) {
+      (aside as HTMLElement).style.background =
+        `linear-gradient(180deg, ${themeColors.gradientFrom} 0%, ${themeColors.gradientTo} 100%)`;
+    }
+    element.querySelectorAll<HTMLElement>("*").forEach((el) => {
+      const inline = el.getAttribute("style");
+      if (!inline) return;
+      let updated = inline
+        .replace(/var\(--theme-primary\)/g, themeColors.primary)
+        .replace(/var\(--theme-dark\)/g, themeColors.dark)
+        .replace(/var\(--theme-light\)/g, themeColors.light)
+        .replace(/var\(--theme-gradient-from\)/g, themeColors.gradientFrom)
+        .replace(/var\(--theme-gradient-to\)/g, themeColors.gradientTo);
+      if (updated !== inline) el.setAttribute("style", updated);
+    });
+  };
+
+  const temp = document.createElement("div");
+  temp.setAttribute("data-rb-pdf-temp", "true");
+  temp.style.position = "absolute";
+  temp.style.left = "-9999px";
+  temp.style.top = "0";
+  document.body.appendChild(temp);
+
+  try {
+    const mainContent = sheetRoot.querySelector("main");
+    const captureScale =
+      mainContent && mainContent.scrollHeight > pageHeightPx * 2 ? 1.5 : 2;
+
+    const page1 = sheetRoot.cloneNode(true) as HTMLElement;
+    page1.style.width = `${widthMm}mm`;
+    page1.style.height = `${heightMm}mm`;
+    page1.style.minHeight = `${heightMm}mm`;
+    page1.style.maxHeight = `${heightMm}mm`;
+    page1.style.overflow = "hidden";
+    page1.style.fontSize = `${fontScale}%`;
+    page1.style.background = "white";
+    page1.style.transform = "none";
+
+    const page1Aside = page1.querySelector("aside") as HTMLElement | null;
+    const page1Main = page1.querySelector("main") as HTMLElement | null;
+    if (page1Aside) page1Aside.style.padding = `${contentPadding}px ${contentPadding * 0.667}px`;
+    if (page1Main) page1Main.style.padding = `${contentPadding}px`;
+    applyThemeColors(page1);
+    page1.querySelector(".page-break-indicator")?.remove();
+
+    temp.appendChild(page1);
+    await new Promise((r) => setTimeout(r, 80));
+
+    const canvas1 = await html2canvas(page1, {
+      scale: captureScale,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      width: page1.offsetWidth,
+      height: page1.offsetHeight,
+    });
+    pdfDoc.addImage(canvas1.toDataURL("image/png"), "PNG", 0, 0, pageWidth, pageHeight);
+
+    if (mainContent && mainContent.scrollHeight > pageHeightPx) {
+      const remainingHeight = mainContent.scrollHeight - pageHeightPx;
+      const additionalPages = Math.ceil(remainingHeight / pageHeightPx);
+      for (let i = 0; i < additionalPages; i++) {
+        const pageN = sheetRoot.cloneNode(true) as HTMLElement;
+        pageN.style.width = `${widthMm}mm`;
+        pageN.style.height = `${heightMm}mm`;
+        pageN.style.minHeight = `${heightMm}mm`;
+        pageN.style.maxHeight = `${heightMm}mm`;
+        pageN.style.overflow = "hidden";
+        pageN.style.fontSize = `${fontScale}%`;
+        pageN.style.background = "white";
+        pageN.style.transform = "none";
+
+        const asideN = pageN.querySelector("aside") as HTMLElement | null;
+        const mainN = pageN.querySelector("main") as HTMLElement | null;
+        if (asideN) {
+          asideN.innerHTML = "";
+          asideN.style.padding = `${contentPadding}px ${contentPadding * 0.667}px`;
+        }
+        if (mainN) {
+          mainN.style.padding = `${contentPadding}px`;
+          mainN.style.marginTop = `-${pageHeightPx * (i + 1)}px`;
+        }
+        applyThemeColors(pageN);
+        pageN.querySelector(".page-break-indicator")?.remove();
+        temp.appendChild(pageN);
+        await new Promise((r) => setTimeout(r, 80));
+        const canvasN = await html2canvas(pageN, {
+          scale: captureScale,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          width: pageN.offsetWidth,
+          height: pageN.offsetHeight,
+        });
+        pdfDoc.addPage();
+        pdfDoc.addImage(canvasN.toDataURL("image/png"), "PNG", 0, 0, pageWidth, pageHeight);
+        pageN.remove();
+      }
+    }
+
+    return pdfDoc.output("blob");
+  } finally {
+    temp.remove();
+  }
+}
+
+function stylesFor(themeId: string) {
   const theme = themes[themeId as ThemeId] ?? themes.teal;
   return StyleSheet.create({
-    page: {
-      flexDirection: sidebar ? "row" : "column",
-      fontSize: 10,
-      fontFamily: "Helvetica",
-      color: "#0f172a",
-    },
-    aside: {
-      width: "32%",
-      backgroundColor: theme.surface,
-      padding: 18,
-    },
-    main: {
-      width: sidebar ? "68%" : "100%",
-      padding: sidebar ? 22 : 28,
-    },
-    h1: { fontSize: 22, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 2 },
-    headline: { fontSize: 11, fontFamily: "Helvetica-Bold", color: theme.dark, marginBottom: 6 },
-    accent: {
-      width: 48,
-      height: 4,
-      backgroundColor: theme.primary,
-      borderRadius: 2,
-      marginBottom: 10,
-      marginTop: 4,
-    },
+    page: { padding: 28, fontSize: 10, fontFamily: "Helvetica", color: "#0f172a" },
+    h1: { fontSize: 20, fontFamily: "Helvetica-Bold", marginBottom: 4 },
     h2: {
       fontSize: 9,
       fontFamily: "Helvetica-Bold",
       color: theme.dark,
       textTransform: "uppercase",
-      letterSpacing: 1.4,
+      letterSpacing: 1.2,
       marginTop: 10,
       marginBottom: 4,
     },
-    p: { fontSize: 10, lineHeight: 1.45, marginBottom: 4, color: "#1e293b" },
-    kvLabel: { fontSize: 8, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.6 },
-    kvValue: { fontSize: 9, color: "#1e293b", marginBottom: 6 },
-    chipRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 2 },
-    chip: {
-      fontSize: 8,
-      borderWidth: 1,
-      borderColor: "#e2e8f0",
-      backgroundColor: "#f8fafc",
-      color: "#1e293b",
-      paddingHorizontal: 6,
-      paddingVertical: 3,
-      borderRadius: 10,
-      marginRight: 4,
-      marginBottom: 4,
-    },
-    entryTitle: { fontSize: 11, fontFamily: "Helvetica-Bold" },
-    entrySub: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#64748b" },
-    entryMeta: { fontSize: 8, color: "#64748b", marginBottom: 2 },
-    subTitle: { fontSize: 10, fontFamily: "Helvetica-Bold", marginTop: 4 },
-    bulletRow: { flexDirection: "row", marginBottom: 2 },
-    bulletDot: { width: 10, fontSize: 10, color: theme.dark },
-    bulletText: { flex: 1, fontSize: 9.5, lineHeight: 1.35, color: "#1e293b" },
-    lineItem: { fontSize: 9.5, marginBottom: 2 },
-    photo: { width: 72, height: 72, borderRadius: 36, marginBottom: 12, objectFit: "cover", alignSelf: "center" },
-    link: { fontSize: 9, color: theme.primary, marginBottom: 4 },
+    p: { fontSize: 10, lineHeight: 1.4, marginBottom: 4 },
+    muted: { fontSize: 11, color: theme.dark, marginBottom: 6, fontFamily: "Helvetica-Bold" },
   });
 }
 
@@ -91,82 +190,62 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
                 {block.text}
               </Text>
             );
-          case "accentBar":
-            return <View key={key} style={s.accent} />;
           case "paragraph":
             return (
-              <Text key={key} style={block.muted ? s.headline : s.p}>
+              <Text key={key} style={block.muted ? s.muted : s.p}>
                 {block.text}
               </Text>
             );
           case "chips":
             return (
-              <View key={key} style={s.chipRow}>
-                {block.items.map((item) => (
-                  <Text key={item} style={s.chip}>
-                    {item}
-                  </Text>
-                ))}
-              </View>
+              <Text key={key} style={s.p}>
+                {block.items.join(" · ")}
+              </Text>
             );
           case "bullets":
             return (
               <View key={key}>
                 {block.items.map((item, idx) => (
-                  <View key={idx} style={s.bulletRow}>
-                    <Text style={s.bulletDot}>•</Text>
-                    <Text style={s.bulletText}>{item}</Text>
-                  </View>
+                  <Text key={idx} style={s.p}>
+                    • {item}
+                  </Text>
                 ))}
               </View>
             );
           case "kv":
-            return (
-              <View key={key}>
-                <Text style={s.kvLabel}>{block.label}</Text>
-                {block.href ? (
-                  <Link src={block.href} style={s.link}>
-                    {block.value}
-                  </Link>
-                ) : (
-                  <Text style={s.kvValue}>{block.value}</Text>
-                )}
-              </View>
-            );
           case "link":
             return (
-              <Link key={key} src={block.href} style={s.link}>
-                {block.label}
-              </Link>
+              <Text key={key} style={s.p}>
+                {"label" in block ? `${block.label}: ` : ""}
+                {"value" in block ? block.value : "href" in block ? block.href : ""}
+              </Text>
             );
-          case "photo":
-            return block.src ? <Image key={key} src={block.src} style={s.photo} /> : null;
           case "lineItem":
             return (
-              <Text key={key} style={s.lineItem}>
-                <Text style={{ fontFamily: "Helvetica-Bold" }}>{block.text}</Text>
-                {block.muted ? <Text style={{ color: "#64748b" }}> {block.muted}</Text> : null}
+              <Text key={key} style={s.p}>
+                {block.text} {block.muted || ""}
               </Text>
             );
           case "entry":
             return (
-              <View key={key} style={{ marginBottom: 8 }}>
-                <Text style={s.entryTitle}>{block.title}</Text>
-                {block.subtitle ? <Text style={s.entrySub}>{block.subtitle}</Text> : null}
-                {block.meta ? <Text style={s.entryMeta}>{block.meta}</Text> : null}
+              <View key={key} style={{ marginBottom: 6 }}>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>{block.title}</Text>
+                {block.subtitle ? <Text style={s.p}>{block.subtitle}</Text> : null}
+                {block.meta ? <Text style={s.p}>{block.meta}</Text> : null}
                 {block.url ? (
-                  <Link src={block.url} style={s.link}>
+                  <Link src={block.url} style={{ fontSize: 8, color: "#0f766e" }}>
                     {block.url}
                   </Link>
                 ) : null}
                 {block.subsections?.map((sec, idx) => (
                   <View key={idx}>
-                    {sec.title ? <Text style={s.subTitle}>{sec.title}</Text> : null}
+                    {sec.title ? (
+                      <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 10 }}>{sec.title}</Text>
+                    ) : null}
                     {sec.bullets.map((line, j) => (
-                      <View key={j} style={s.bulletRow}>
-                        <Text style={s.bulletDot}>•</Text>
-                        <Text style={s.bulletText}>{line}</Text>
-                      </View>
+                      <Text key={j} style={s.p}>
+                        • {line}
+                      </Text>
                     ))}
                   </View>
                 ))}
@@ -177,8 +256,10 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
                 ))}
               </View>
             );
+          case "accentBar":
+          case "photo":
           case "spacer":
-            return <View key={key} style={{ height: block.size === "sm" ? 4 : 8 }} />;
+            return <View key={key} style={{ height: 6 }} />;
           default: {
             const _exhaustive: never = block;
             void _exhaustive;
@@ -190,36 +271,42 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
   );
 }
 
-function PdfDocument({ ir }: { ir: LayoutIr }) {
-  const sidebar = ir.templateId === "sidebar";
-  const s = stylesFor(ir.themeId, sidebar);
-  const page = ir.pages[0]!;
-  const aside = page.columns.find((c) => c.id === "aside");
-  const main = page.columns.find((c) => c.id === "main") ?? page.columns[0]!;
-
-  return (
+async function exportPdfFromIr(doc: ResumeDocument): Promise<Blob> {
+  const ir = documentToIr(doc);
+  const s = stylesFor(ir.themeId);
+  const blocks = ir.pages[0]?.columns.flatMap((c) => c.blocks) ?? [];
+  const instance = pdf(
     <Document>
       <Page size="A4" style={s.page}>
-        {aside ? (
-          <View style={s.aside}>
-            <PdfBlocks blocks={aside.blocks} s={s} />
-          </View>
-        ) : null}
-        <View style={s.main}>
-          <PdfBlocks blocks={main.blocks} s={s} />
-        </View>
+        <PdfBlocks blocks={blocks} s={s} />
       </Page>
-    </Document>
+    </Document>,
   );
-}
-
-export async function exportPdfBlob(doc: ResumeDocument): Promise<Blob> {
-  const ir = documentToIr(doc);
-  const instance = pdf(<PdfDocument ir={ir} />);
   return instance.toBlob();
 }
 
-export async function downloadPdf(doc: ResumeDocument, filename = "resume.pdf") {
-  const blob = await exportPdfBlob(doc);
+export async function exportPdfBlob(
+  doc: ResumeDocument,
+  sheetRoot?: HTMLElement | null,
+): Promise<Blob> {
+  if (doc.template === "sidebar" && sheetRoot) {
+    return exportPdfFromSheet(sheetRoot, { name: doc.name });
+  }
+  // Prefer live sheet whenever present (best WYSIWYG)
+  if (sheetRoot?.querySelector("aside") && sheetRoot?.querySelector("main")) {
+    return exportPdfFromSheet(sheetRoot, { name: doc.name });
+  }
+  return exportPdfFromIr(doc);
+}
+
+export async function downloadPdf(
+  doc: ResumeDocument,
+  filename = "resume.pdf",
+  sheetRoot?: HTMLElement | null,
+) {
+  const blob = await exportPdfBlob(
+    doc,
+    sheetRoot ?? document.querySelector<HTMLElement>(".sheet"),
+  );
   saveAs(blob, filename);
 }
