@@ -78,11 +78,11 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
   const visibleCount = Object.values(sectionVisibility).filter(Boolean).length;
 
   return (
-    <div className="border-b p-3 bg-slate-50">
-      <div className="flex items-center justify-between">
+    <div className="rb-settings border-b bg-slate-50">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
+          className="flex min-h-[38px] items-center gap-2 text-sm font-bold text-slate-700 hover:text-slate-900"
           aria-label={`Section visibility controls, ${visibleCount} of ${SECTION_CONFIG.length} sections visible`}
           aria-expanded={isOpen}
           aria-controls="section-visibility-options"
@@ -93,31 +93,31 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
         </button>
         
         {isOpen && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <button
               onClick={showAll}
-              className="px-2 py-1 text-xs rounded border hover:bg-white transition-colors"
+              className="rb-button min-h-[32px] px-2 py-1 text-xs"
               aria-label="Show all sections"
             >
               Show All
             </button>
             <button
               onClick={hideEmpty}
-              className="px-2 py-1 text-xs rounded border hover:bg-white transition-colors"
+              className="rb-button min-h-[32px] px-2 py-1 text-xs"
               aria-label="Hide empty sections"
             >
               Hide Empty
             </button>
             <button
               onClick={hideOptional}
-              className="px-2 py-1 text-xs rounded border hover:bg-white transition-colors"
+              className="rb-button min-h-[32px] px-2 py-1 text-xs"
               aria-label="Hide optional sections"
             >
               Hide Optional
             </button>
             <button
               onClick={resetDefaults}
-              className="px-2 py-1 text-xs rounded border hover:bg-white transition-colors"
+              className="rb-button min-h-[32px] px-2 py-1 text-xs"
               aria-label="Reset section visibility and order"
             >
               Reset Defaults
@@ -127,7 +127,7 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
       </div>
 
       {isOpen && (
-        <div id="section-visibility-options" className="mt-3 grid grid-cols-1 gap-2" role="group" aria-label="Section visibility toggles">
+        <div id="section-visibility-options" className="grid grid-cols-1 gap-2 px-4 pb-4" role="group" aria-label="Section visibility toggles">
           {orderedSectionIds.map(sectionId => {
             const section = SECTION_CONFIG.find(s => s.id === sectionId);
             if (!section) return null;
@@ -139,7 +139,7 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
                 className="flex items-center gap-2"
               >
                 <label
-                  className={`flex flex-1 items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${
+                  className={`flex min-h-[42px] flex-1 items-center gap-2 rounded border p-2 cursor-pointer transition-colors ${
                     sectionVisibility[section.id] 
                       ? 'bg-white border-teal-300' 
                       : 'bg-slate-100 border-slate-300'
@@ -168,7 +168,7 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
                   <button
                     type="button"
                     aria-label={`Move ${section.label} up`}
-                    className="rounded border border-slate-200 p-1 text-slate-500 transition hover:border-teal-300 hover:text-teal-600 disabled:opacity-30"
+                    className="rounded border border-slate-200 p-1.5 text-slate-500 transition hover:border-teal-300 hover:text-teal-600 disabled:opacity-30"
                     onClick={() => moveSection(section.id, -1)}
                     disabled={index === 0}
                   >
@@ -177,7 +177,7 @@ export default function SectionVisibility({ state, sectionVisibility, setSection
                   <button
                     type="button"
                     aria-label={`Move ${section.label} down`}
-                    className="rounded border border-slate-200 p-1 text-slate-500 transition hover:border-teal-300 hover:text-teal-600 disabled:opacity-30"
+                    className="rounded border border-slate-200 p-1.5 text-slate-500 transition hover:border-teal-300 hover:text-teal-600 disabled:opacity-30"
                     onClick={() => moveSection(section.id, 1)}
                     disabled={index === orderedSectionIds.length - 1}
                   >

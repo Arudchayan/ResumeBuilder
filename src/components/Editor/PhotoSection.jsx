@@ -49,7 +49,7 @@ export default function PhotoSection({ state, updatePhoto }) {
   };
 
   return (
-    <Section title="Photo (optional)">
+    <Section title="Photo (optional)" hint="Optional">
       <div className="flex items-center gap-2">
         <input
           id={showPhotoId}

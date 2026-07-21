@@ -34,41 +34,41 @@ export default function OnboardingModal({ open, onClose, onLoadSample }) {
 
   return (
     <ModalFrame title={`Welcome to ${PRODUCT_NAME}`} onClose={onClose}>
-      <div className="mb-4 flex items-center gap-3 rounded-xl border border-teal-100 bg-gradient-to-r from-teal-50 to-cyan-50 px-4 py-3 text-teal-900">
-        <span className="rounded-full bg-white/80 p-2 shadow-sm ring-1 ring-teal-100">
+      <div className="mb-4 flex items-start gap-3 rounded-xl border border-teal-100 bg-teal-50/70 px-4 py-3 text-teal-900">
+        <span className="mt-0.5 rounded-full bg-white p-2 shadow-sm ring-1 ring-teal-100">
           <Sparkles size={18} className="text-teal-600" />
         </span>
-        <p className="text-sm text-slate-700">
-          You can load a sample resume to explore every section, or start from a blank document and fill in your own
-          information.
-        </p>
+        <div>
+          <p className="text-sm font-semibold text-slate-800">A focused workspace for building a polished CV.</p>
+          <p className="mt-1 text-sm text-slate-600">Start blank or load a sample to see the editor and live preview in action.</p>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="rb-onboarding-steps">
         {tips.map(({ title, description, icon: Icon }) => (
-          <div key={title} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
-            <div className="mb-2 flex items-center gap-2 text-slate-900">
-              <span className="rounded-lg bg-white p-2 shadow-sm">
+          <div key={title} className="rb-onboarding-step">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
                 <Icon size={16} className="text-teal-600" />
-              </span>
-              <p className="text-sm font-semibold">{title}</p>
             </div>
-            <p className="text-sm text-slate-600">{description}</p>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">{title}</p>
+              <p className="mt-1 text-sm text-slate-600">{description}</p>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <div className="rb-onboarding-actions mt-5 flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-end">
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className="rb-button inline-flex justify-center"
           onClick={onClose}
         >
           Start blank
         </button>
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-xl bg-teal-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-600"
+          className="rb-button rb-button-primary inline-flex justify-center"
           onClick={onLoadSample}
         >
           Load sample resume

@@ -13,7 +13,7 @@ export default function ContactSection({ state, update, addRow, removeRow, setSt
   const linkRowBase = useId();
 
   return (
-    <Section title="Contact & Links">
+    <Section title="Contact & Links" defaultOpen hint="Required">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <Label htmlFor={locId}>Location</Label>

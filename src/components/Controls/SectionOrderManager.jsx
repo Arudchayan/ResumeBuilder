@@ -32,11 +32,11 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
   };
 
   return (
-    <div className="border-b p-3 bg-slate-50">
-      <div className="flex items-center justify-between">
+    <div className="rb-settings border-b bg-slate-50">
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
+          className="flex min-h-[38px] items-center gap-2 text-sm font-bold text-slate-700 hover:text-slate-900"
           aria-label="Section order controls"
           aria-expanded={isOpen}
           aria-controls="section-order-list"
@@ -49,7 +49,7 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
         {isOpen && (
           <button
             onClick={resetOrder}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded border hover:bg-white transition-colors"
+            className="rb-button min-h-[32px] px-2 py-1 text-xs"
             aria-label="Reset section order to default"
           >
             <RotateCcw size={12} />
@@ -59,7 +59,7 @@ export default function SectionOrderManager({ sectionOrder, setSectionOrder }) {
       </div>
 
       {isOpen && (
-        <div id="section-order-list" className="mt-3 space-y-1">
+        <div id="section-order-list" className="space-y-1 px-4 pb-4">
           <p className="text-xs text-slate-500 mb-2">Drag sections below or use arrows to reorder</p>
           {sectionOrder.map((sectionId, index) => (
             <div

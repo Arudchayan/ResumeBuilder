@@ -10,7 +10,7 @@ export default function IdentitySection({ state, update }) {
   const summaryId = useId();
 
   return (
-    <Section title="Identity">
+    <Section title="Identity" defaultOpen hint="Start here">
       <Label htmlFor={nameId}>Full name</Label>
       <Input
         id={nameId}

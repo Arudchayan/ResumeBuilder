@@ -107,6 +107,8 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding, sh
       page1.style.overflow = "hidden";
       page1.style.fontSize = `${fontSize}%`;
       page1.style.background = "white";
+      page1.style.transform = "none";
+      page1.style.transformOrigin = "top left";
 
       const page1Aside = page1.querySelector("aside");
       const page1Main = page1.querySelector("main");
@@ -145,6 +147,8 @@ export async function exportToPDF(state, paperSize, fontSize, contentPadding, sh
           pageN.style.overflow = "hidden";
           pageN.style.fontSize = `${fontSize}%`;
           pageN.style.background = "white";
+          pageN.style.transform = "none";
+          pageN.style.transformOrigin = "top left";
 
           const pageNAside = pageN.querySelector("aside");
           const pageNMain = pageN.querySelector("main");

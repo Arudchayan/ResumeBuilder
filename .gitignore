@@ -47,6 +47,7 @@ playwright-report
 .tmp
 # Local JSON exports (often contain PII)
 resume.json
+kuhavathani-resume.json
 Arudchayan_Pirabaharan.pdf
 
 # Backup files

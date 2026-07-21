@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Resume Builder design tokens. The editor is a calm, editorial workspace; the
+   resume itself keeps the restrained teal language of the reference PDF. */
+:root {
+  color-scheme: light;
+  --rb-canvas: #f3f6f3;
+  --rb-surface: #fbfcfa;
+  --rb-surface-raised: #ffffff;
+  --rb-ink: #16262b;
+  --rb-muted: #66767d;
+  --rb-subtle: #8b999e;
+  --rb-border: #dce5e1;
+  --rb-border-strong: #c8d5d0;
+  --rb-accent: #12b7a7;
+  --rb-accent-dark: #087f78;
+  --rb-accent-soft: #e6f6f2;
+  --rb-warning-soft: #fff4d9;
+  --rb-warning: #9a6500;
+  --rb-danger: #bd4c4c;
+  --rb-radius-sm: 8px;
+  --rb-radius-md: 12px;
+  --rb-radius-lg: 16px;
+  --rb-shadow-panel: 0 18px 48px rgba(23, 49, 45, 0.08), 0 2px 8px rgba(23, 49, 45, 0.04);
+  --rb-shadow-page: 0 22px 42px rgba(29, 47, 44, 0.16), 0 3px 8px rgba(29, 47, 44, 0.08);
+}
+
 /* Theme-aware styles using CSS variables */
 .text-theme-primary {
   color: var(--theme-primary, #14b8a6);
@@ -28,13 +53,748 @@
 }
 
 @layer base {
+  html {
+    background: var(--rb-canvas);
+  }
+
   body {
     @apply antialiased;
+    margin: 0;
+    min-width: 320px;
+    background: var(--rb-canvas);
+    color: var(--rb-ink);
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  a:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--rb-accent) 38%, transparent);
+    outline-offset: 2px;
   }
 }
 
 /* Custom styles for resume builder */
 @layer components {
+  .rb-app {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 75% -20%, rgba(18, 183, 167, 0.08), transparent 36rem),
+      var(--rb-canvas);
+  }
+
+  .rb-app-header {
+    border-color: var(--rb-border);
+    background: color-mix(in srgb, var(--rb-surface-raised) 94%, transparent);
+    box-shadow: 0 1px 0 rgba(22, 38, 43, 0.03);
+  }
+
+  .rb-brand-mark {
+    position: relative;
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: var(--rb-ink);
+    color: white;
+  }
+
+  .rb-brand-mark::after {
+    position: absolute;
+    right: -4px;
+    bottom: -3px;
+    width: 11px;
+    height: 11px;
+    border: 3px solid var(--rb-surface-raised);
+    border-radius: 999px;
+    background: var(--rb-accent);
+    content: "";
+  }
+
+  .rb-help-link {
+    min-height: 36px;
+    border-radius: var(--rb-radius-sm);
+    color: var(--rb-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+
+  .rb-help-link:hover {
+    background: var(--rb-accent-soft);
+    color: var(--rb-accent-dark);
+  }
+
+  .rb-workspace {
+    display: grid;
+    grid-template-columns: minmax(340px, 410px) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+
+  .rb-panel {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--rb-border);
+    border-radius: var(--rb-radius-lg);
+    background: var(--rb-surface-raised);
+    box-shadow: var(--rb-shadow-panel);
+  }
+
+  .rb-editor-panel {
+    position: sticky;
+    top: 78px;
+    display: flex;
+    max-height: calc(100vh - 98px);
+    flex-direction: column;
+  }
+
+  .rb-editor-toolbar {
+    flex: none;
+    border-bottom: 1px solid var(--rb-border);
+    background: var(--rb-surface-raised);
+  }
+
+  .rb-editor-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--rb-border-strong) transparent;
+  }
+
+  .rb-toolbar-meta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 18px 14px;
+  }
+
+  .rb-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--rb-muted);
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+
+  .rb-status-dot {
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-radius: 999px;
+    background: #38a875;
+  }
+
+  .rb-status-dot.is-dirty {
+    background: #dfa22c;
+    box-shadow: 0 0 0 4px rgba(223, 162, 44, 0.14);
+  }
+
+  .rb-history {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .rb-icon-button {
+    display: inline-flex;
+    min-width: 38px;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--rb-border);
+    border-radius: var(--rb-radius-sm);
+    background: var(--rb-surface-raised);
+    color: var(--rb-ink);
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+  }
+
+  .rb-icon-button:hover:not(:disabled) {
+    border-color: var(--rb-border-strong);
+    background: var(--rb-accent-soft);
+    color: var(--rb-accent-dark);
+  }
+
+  .rb-icon-button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .rb-icon-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+  }
+
+  .rb-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 18px 18px;
+  }
+
+  .rb-button {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid var(--rb-border-strong);
+    border-radius: var(--rb-radius-sm);
+    padding: 8px 11px;
+    background: var(--rb-surface-raised);
+    color: var(--rb-ink);
+    font-size: 0.75rem;
+    font-weight: 750;
+    line-height: 1.2;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+  }
+
+  .rb-button:hover:not(:disabled) {
+    border-color: var(--rb-accent);
+    background: var(--rb-accent-soft);
+    color: var(--rb-accent-dark);
+  }
+
+  .rb-button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .rb-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .rb-button-wide {
+    grid-column: 1 / -1;
+  }
+
+  .rb-button-primary {
+    border-color: var(--rb-accent);
+    background: var(--rb-accent);
+    color: white;
+  }
+
+  .rb-button-primary:hover:not(:disabled) {
+    border-color: var(--rb-accent-dark);
+    background: var(--rb-accent-dark);
+    color: white;
+  }
+
+  .rb-button-secondary {
+    background: #fffaf0;
+    border-color: #e7c779;
+    color: #7c5200;
+  }
+
+  .rb-button-secondary:hover:not(:disabled) {
+    border-color: #c99a33;
+    background: var(--rb-warning-soft);
+    color: #6c4700;
+  }
+
+  .rb-settings {
+    border-bottom: 1px solid var(--rb-border);
+    background: #f8faf8;
+  }
+
+  .rb-settings > div,
+  .rb-settings > button {
+    border-color: var(--rb-border);
+  }
+
+  .rb-editor-sections {
+    display: grid;
+    gap: 12px;
+    padding: 16px 18px 28px 24px;
+  }
+
+  .rb-sortable-section {
+    position: relative;
+  }
+
+  .rb-sortable-section.is-dragging {
+    z-index: 2;
+  }
+
+  .rb-drag-handle {
+    position: absolute;
+    top: 18px;
+    left: -22px;
+    z-index: 3;
+    display: inline-flex;
+    min-width: 22px;
+    min-height: 30px;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    border-radius: 6px;
+    color: var(--rb-subtle);
+    touch-action: none;
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+
+  .rb-drag-handle:hover {
+    background: var(--rb-accent-soft);
+    color: var(--rb-accent-dark);
+  }
+
+  .rb-drag-handle:active {
+    cursor: grabbing;
+  }
+
+  .rb-section {
+    overflow: hidden;
+    border: 1px solid var(--rb-border);
+    border-radius: var(--rb-radius-md);
+    background: var(--rb-surface-raised);
+  }
+
+  .rb-section-header {
+    display: flex;
+    min-height: 54px;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    list-style: none;
+    transition: background-color 160ms ease;
+  }
+
+  .rb-section-header::-webkit-details-marker {
+    display: none;
+  }
+
+  .rb-section-header:hover {
+    background: #f6faf8;
+  }
+
+  .rb-section-chevron {
+    color: var(--rb-subtle);
+    transition: transform 180ms ease;
+  }
+
+  .rb-section.is-open .rb-section-chevron {
+    transform: rotate(180deg);
+  }
+
+  .rb-section-title {
+    color: var(--rb-ink);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .rb-section-hint {
+    margin-left: auto;
+    color: var(--rb-subtle);
+    font-size: 0.69rem;
+  }
+
+  .rb-section-content {
+    border-top: 1px solid var(--rb-border);
+    padding: 16px;
+  }
+
+  .rb-row {
+    border-color: var(--rb-border);
+    border-radius: var(--rb-radius-sm);
+    background: #fbfdfb;
+  }
+
+  .rb-row-header {
+    min-height: 38px;
+  }
+
+  .rb-row-remove {
+    color: var(--rb-muted);
+  }
+
+  .rb-row-remove:hover {
+    border-color: #e4b5b5;
+    background: #fff6f6;
+    color: var(--rb-danger);
+  }
+
+  .rb-field-label {
+    color: var(--rb-muted);
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.01em;
+  }
+
+  .rb-input,
+  .rb-textarea {
+    border-color: var(--rb-border);
+    border-radius: var(--rb-radius-sm);
+    background: var(--rb-surface-raised);
+    color: var(--rb-ink);
+    box-shadow: 0 1px 1px rgba(23, 49, 45, 0.02);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+
+  .rb-input:hover,
+  .rb-textarea:hover {
+    border-color: var(--rb-border-strong);
+  }
+
+  .rb-input:focus,
+  .rb-textarea:focus {
+    border-color: var(--rb-accent);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(18, 183, 167, 0.14);
+  }
+
+  .rb-preview-panel {
+    min-height: calc(100vh - 98px);
+  }
+
+  .rb-preview-header {
+    border-bottom: 1px solid var(--rb-border);
+    background: var(--rb-surface-raised);
+    padding: 18px 20px 16px;
+  }
+
+  .rb-preview-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .rb-preview-subtitle {
+    color: var(--rb-muted);
+    font-size: 0.72rem;
+  }
+
+  .rb-preview-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    background: var(--rb-accent-soft);
+    padding: 6px 9px;
+    color: var(--rb-accent-dark);
+    font-size: 0.7rem;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+
+  .rb-preview-controls {
+    display: grid;
+    grid-template-columns: minmax(155px, 1.2fr) minmax(175px, 1fr) minmax(175px, 1fr);
+    gap: 12px;
+    align-items: end;
+    margin-top: 18px;
+  }
+
+  .rb-control {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .rb-control-label {
+    color: var(--rb-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .rb-control-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rb-control select,
+  .rb-control select:focus {
+    min-height: 38px;
+    border: 1px solid var(--rb-border);
+    border-radius: var(--rb-radius-sm);
+    background: var(--rb-surface-raised);
+    color: var(--rb-ink);
+    font-size: 0.76rem;
+    outline: none;
+  }
+
+  .rb-control input[type="range"] {
+    appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--rb-border-strong);
+    min-width: 0;
+    accent-color: var(--rb-accent);
+  }
+
+  .rb-control input[type="range"]::-webkit-slider-thumb {
+    width: 17px;
+    height: 17px;
+    appearance: none;
+    border: 3px solid var(--rb-surface-raised);
+    border-radius: 999px;
+    background: var(--rb-accent);
+    box-shadow: 0 1px 4px rgba(23, 49, 45, 0.24);
+    cursor: grab;
+  }
+
+  .rb-control input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 3px solid var(--rb-surface-raised);
+    border-radius: 999px;
+    background: var(--rb-accent);
+    box-shadow: 0 1px 4px rgba(23, 49, 45, 0.24);
+    cursor: grab;
+  }
+
+  .rb-control-value {
+    min-width: 42px;
+    color: var(--rb-muted);
+    font-size: 0.72rem;
+    text-align: right;
+  }
+
+  .rb-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .rb-preset {
+    min-height: 28px;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    padding: 4px 7px;
+    background: var(--rb-surface-raised);
+    color: var(--rb-muted);
+    font-size: 0.66rem;
+    font-weight: 750;
+  }
+
+  .rb-preset.is-selected,
+  .rb-preset:hover {
+    border-color: var(--rb-accent);
+    background: var(--rb-accent-soft);
+    color: var(--rb-accent-dark);
+  }
+
+  .rb-preview-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .rb-preview-stage {
+    min-height: 640px;
+    overflow: hidden;
+    padding: 24px 16px 36px;
+    background: #e9efec;
+  }
+
+  .rb-preview-sheet-wrap {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .rb-preview-sheet-wrap.is-full-size {
+    width: max-content;
+    min-width: 100%;
+    justify-content: flex-start;
+    padding: 0 16px;
+  }
+
+  .rb-preview-sheet {
+    flex: none;
+    transform-origin: top center;
+    box-shadow: var(--rb-shadow-page);
+  }
+
+  .rb-view-tabs {
+    display: none;
+  }
+
+  .rb-empty-note {
+    border: 1px dashed var(--rb-border-strong);
+    border-radius: var(--rb-radius-sm);
+    background: #f7faf8;
+    padding: 12px;
+    color: var(--rb-muted);
+    font-size: 0.73rem;
+    line-height: 1.5;
+  }
+
+  .rb-modal {
+    display: flex;
+    max-height: min(90vh, 680px);
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 18px;
+    background: var(--rb-surface-raised);
+    box-shadow: 0 28px 80px rgba(10, 27, 31, 0.24);
+  }
+
+  .rb-modal-body {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .rb-onboarding-steps {
+    display: grid;
+    gap: 8px;
+  }
+
+  .rb-onboarding-actions {
+    position: sticky;
+    bottom: -16px;
+    z-index: 2;
+    margin-right: -20px;
+    margin-left: -20px;
+    padding-right: 20px;
+    padding-bottom: 16px;
+    padding-left: 20px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.84), var(--rb-surface-raised) 32%);
+  }
+
+  .rb-onboarding-step {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+    border-bottom: 1px solid var(--rb-border);
+    padding: 12px 0;
+  }
+
+  .rb-onboarding-step:last-child {
+    border-bottom: 0;
+  }
+
+  @media (max-width: 1023px) {
+    .rb-view-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      margin-bottom: 12px;
+      border: 1px solid var(--rb-border);
+      border-radius: var(--rb-radius-md);
+      padding: 4px;
+      background: #e9efec;
+    }
+
+    .rb-view-tab {
+      min-height: 40px;
+      border-radius: 9px;
+      color: var(--rb-muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .rb-view-tab.is-active {
+      background: var(--rb-surface-raised);
+      color: var(--rb-accent-dark);
+      box-shadow: 0 2px 5px rgba(23, 49, 45, 0.08);
+    }
+
+    .rb-panel-mobile-hidden {
+      display: none;
+    }
+
+    .rb-workspace {
+      display: block;
+    }
+
+    .rb-editor-panel {
+      position: static;
+      max-height: none;
+    }
+
+    .rb-preview-panel {
+      min-height: 0;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .rb-toolbar-meta {
+      padding: 15px 14px 12px;
+    }
+
+    .rb-action-grid {
+      gap: 7px;
+      padding: 0 14px 14px;
+    }
+
+    .rb-editor-sections {
+      padding: 12px 14px 24px 20px;
+    }
+
+    .rb-drag-handle {
+      left: -20px;
+    }
+
+    .rb-preview-header {
+      padding: 15px 14px 14px;
+    }
+
+    .rb-preview-title-row {
+      align-items: center;
+    }
+
+    .rb-preview-controls {
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .rb-preview-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .rb-preview-actions .rb-button {
+      width: 100%;
+    }
+
+    .rb-preview-stage {
+      min-height: 480px;
+      padding: 18px 8px 28px;
+    }
+
+    .rb-section-content {
+      padding: 13px;
+    }
+
+    .rb-modal {
+      max-height: 92vh;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+
   .sheet {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;

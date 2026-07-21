@@ -15,11 +15,11 @@ export default function ThemePicker({ theme, setTheme }) {
   const currentTheme = themes[theme] || themes.teal;
 
   return (
-    <div className="border-b p-3 bg-slate-50">
-      <div className="flex items-center justify-between">
+    <div className="rb-settings border-b bg-slate-50">
+      <div className="flex items-center justify-between px-4 py-3">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
+          className="flex min-h-[38px] items-center gap-2 text-sm font-bold text-slate-700 hover:text-slate-900"
           aria-label={`Color theme selector, currently ${currentTheme.name}`}
           aria-expanded={isOpen}
           aria-controls="theme-options"
@@ -31,12 +31,12 @@ export default function ThemePicker({ theme, setTheme }) {
       </div>
 
       {isOpen && (
-        <div id="theme-options" className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2" role="radiogroup" aria-label="Color themes">
+        <div id="theme-options" className="grid grid-cols-2 gap-2 px-4 pb-4 sm:grid-cols-4" role="radiogroup" aria-label="Color themes">
           {Object.entries(themes).map(([id, themeData]) => (
             <button
               key={id}
               onClick={() => handleThemeChange(id)}
-              className={`flex items-center gap-2 p-2 rounded border transition-all ${
+              className={`flex min-h-[42px] items-center gap-2 rounded border p-2 transition-all ${
                 theme === id
                   ? 'border-2 border-current shadow-md'
                   : 'border-slate-300 hover:border-slate-400'

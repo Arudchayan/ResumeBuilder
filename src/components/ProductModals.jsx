@@ -33,10 +33,10 @@ export function ModalFrame({ title, children, onClose }) {
       onClick={onClose}
     >
       <div
-        className="relative max-h-[min(90vh,640px)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        className="rb-modal relative w-full max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 flex items-start justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4">
+        <div className="flex flex-none items-start justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4">
           <h2 id="product-modal-title" className="text-lg font-semibold text-slate-900">
             {title}
           </h2>
@@ -49,7 +49,7 @@ export function ModalFrame({ title, children, onClose }) {
             <X size={20} />
           </button>
         </div>
-        <div className="px-5 py-4 text-sm text-slate-600">{children}</div>
+        <div className="rb-modal-body px-5 py-4 text-sm text-slate-600">{children}</div>
       </div>
     </div>
   );

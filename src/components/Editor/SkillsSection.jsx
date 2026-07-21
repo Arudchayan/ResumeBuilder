@@ -8,7 +8,7 @@ export default function SkillsSection({ state, update }) {
   const asChips = useMemo(() => (state.skills || []).filter(Boolean), [state.skills]);
 
   return (
-    <Section title="Skills (comma-separated)">
+    <Section title="Skills (comma-separated)" hint={asChips.length ? `${asChips.length} skills` : "Optional"}>
       <Label htmlFor={skillsId}>Skills</Label>
       <Input
         id={skillsId}

@@ -19,13 +19,14 @@ export default function SortableSection({ id, children }) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div ref={setNodeRef} style={style} className={`rb-sortable-section ${isDragging ? 'is-dragging' : ''}`}>
       {/* Drag Handle */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute -left-2 top-3 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 z-10"
+        className="rb-drag-handle"
         title="Drag to reorder"
+        aria-label="Drag to reorder section"
       >
         <GripVertical size={20} />
       </div>

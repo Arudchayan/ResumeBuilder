@@ -21,7 +21,7 @@ export default function EmploymentSection({
   const base = useId();
 
   return (
-    <Section title="Employment">
+    <Section title="Employment" hint={state.jobs.length ? `${state.jobs.length} roles` : "Optional"}>
       <div className="space-y-2">
         {state.jobs.map((job, jdx) => (
           <Row key={jdx} title="Role" onRemove={() => removeJob(jdx)}>

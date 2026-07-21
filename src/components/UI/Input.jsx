@@ -46,7 +46,7 @@ export default function Input({
         onPaste={handlePaste}
         aria-invalid={Boolean(error)}
         aria-describedby={describedBy}
-        className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${error ? 'border-red-300 focus:ring-red-300' : 'border-slate-200 focus:ring-teal-400'} ${className}`}
+        className={`rb-input w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-0 ${error ? 'border-red-300 focus:ring-red-300' : 'border-slate-200'} ${className}`}
       />
       {(error || helperText) && (
         <p id={describedBy} className={`text-xs ${error ? 'text-red-600' : 'text-slate-500'}`}>
