@@ -72,7 +72,7 @@ export const useAppStore = create<AppState>((set, get) => {
     screen: "gallery",
     history: createHistory(blankResume()),
     activeSection: "identity",
-    zoom: 0.85,
+    zoom: 0.72,
     dirty: false,
     lastSaved: null,
     exporting: null,

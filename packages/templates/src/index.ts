@@ -10,3 +10,4 @@ export {
 } from "./ir/documentToIr.js";
 
 export { ResumePreview, TemplateThumb } from "./preview/ResumePreview.js";
+export { ClassicSidebarSheet } from "./preview/ClassicSidebarSheet.js";

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -115,6 +115,9 @@ export function EditorPage() {
   const saveNow = useAppStore((s) => s.saveNow);
   const [mobilePane, setMobilePane] = useState<"edit" | "preview">("edit");
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
+  const [contentPadding, setContentPadding] = useState(48);
+  const [fontScale, setFontScale] = useState(100);
+  const previewHostRef = useRef<HTMLDivElement>(null);
 
   const order = ensureSectionOrder(doc);
   const ir = useMemo(() => documentToIr(doc), [doc]);
@@ -158,8 +161,14 @@ export function EditorPage() {
     setExporting(kind);
     try {
       const { downloadPdf, downloadDocx } = await import("@resume/export");
-      if (kind === "pdf") await downloadPdf(doc, `${doc.name || "resume"}.pdf`);
-      else await downloadDocx(doc, `${doc.name || "resume"}.docx`);
+      if (kind === "pdf") {
+        const sheet =
+          previewHostRef.current?.querySelector<HTMLElement>(".sheet") ??
+          document.querySelector<HTMLElement>(".sheet");
+        await downloadPdf(doc, `${(doc.name || "resume").replace(/\s+/g, "_")}.pdf`, sheet);
+      } else {
+        await downloadDocx(doc, `${(doc.name || "resume").replace(/\s+/g, "_")}.docx`);
+      }
       toast.success(kind === "pdf" ? "PDF downloaded" : "DOCX downloaded");
     } catch (err) {
       console.error(err);
@@ -280,8 +289,11 @@ export function EditorPage() {
               onChange={(e) => apply({ type: "setTheme", theme: e.target.value })}
             >
               <option value="teal">Teal</option>
-              <option value="blue">Ocean</option>
-              <option value="slate">Slate</option>
+              <option value="blue">Professional Blue</option>
+              <option value="purple">Creative Purple</option>
+              <option value="green">Nature Green</option>
+              <option value="slate">Classic Gray</option>
+              <option value="black">Executive Black</option>
               <option value="forest">Forest</option>
               <option value="copper">Copper</option>
             </select>
@@ -317,8 +329,8 @@ export function EditorPage() {
           className={`rounded-2xl bg-slate-100/80 p-4 ${mobilePane === "edit" ? "hidden lg:block" : ""}`}
           aria-label="Preview"
         >
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</span>
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Live Preview</span>
             <Button variant="ghost" aria-label="Zoom out" onClick={() => setZoom(zoom - 0.05)}>
               <ZoomOut className="h-4 w-4" />
             </Button>
@@ -326,8 +338,57 @@ export function EditorPage() {
             <Button variant="ghost" aria-label="Zoom in" onClick={() => setZoom(zoom + 0.05)}>
               <ZoomIn className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" className="!py-1 text-xs" onClick={() => setZoom(0.85)}>
+            <Button
+              variant="secondary"
+              className="!py-1 text-xs"
+              onClick={() => {
+                const host = previewHostRef.current;
+                if (!host) {
+                  setZoom(0.72);
+                  return;
+                }
+                const available = host.clientWidth - 24;
+                const sheetPx = (210 / 25.4) * 96;
+                setZoom(Math.min(1, Math.max(0.45, available / sheetPx)));
+              }}
+            >
               Fit
+            </Button>
+            <label className="flex items-center gap-1 text-xs text-slate-600">
+              Pad
+              <input
+                type="range"
+                min={24}
+                max={64}
+                step={4}
+                value={contentPadding}
+                onChange={(e) => setContentPadding(Number(e.target.value))}
+                className="w-20"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-slate-600">
+              Font
+              <input
+                type="range"
+                min={85}
+                max={115}
+                step={5}
+                value={fontScale}
+                onChange={(e) => setFontScale(Number(e.target.value))}
+                className="w-20"
+              />
+              <span className="tabular-nums">{fontScale}%</span>
+            </label>
+            <Button
+              variant="ghost"
+              className="!py-1 text-xs"
+              onClick={() => {
+                setContentPadding(48);
+                setFontScale(100);
+                toast.success("Layout reset");
+              }}
+            >
+              Reset
             </Button>
             <div className="ml-auto flex gap-2 lg:hidden">
               <Button disabled={exporting !== null} onClick={() => void runExport("pdf")}>
@@ -338,8 +399,15 @@ export function EditorPage() {
               </Button>
             </div>
           </div>
-          <div className="overflow-auto rounded-xl bg-slate-200/50 p-4">
-            <ResumePreview ir={ir} zoom={zoom} onSectionClick={setActiveSection} />
+          <div ref={previewHostRef} className="overflow-auto rounded-xl bg-slate-200/60 p-4">
+            <ResumePreview
+              doc={doc}
+              ir={ir}
+              zoom={zoom}
+              contentPadding={contentPadding}
+              fontScale={fontScale}
+              onSectionClick={setActiveSection}
+            />
           </div>
         </section>
       </div>
