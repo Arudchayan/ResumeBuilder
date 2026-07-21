@@ -16,7 +16,7 @@ packages/export       PDF / DOCX / JSON from IR
 packages/storage      StoragePort + IndexedDB + legacy migrator
 packages/ports        AuthPort / AiPort stubs for future SaaS
 packages/ui           Design tokens + primitives
-docs/architecture     Growth seams
+docs/architecture     Growth seams + delivery phases
 ```
 
 ## Quick start
@@ -46,6 +46,11 @@ pnpm build
 | `pnpm test` | Unit tests (all packages) |
 | `pnpm test:e2e` | Playwright smoke tests |
 | `pnpm typecheck` | TypeScript across workspace |
+
+## Documentation
+
+- [Delivery phases (Phase 0–6 checklist)](docs/architecture/delivery-phases.md)
+- [SaaS growth seams (Phase B)](docs/architecture/saas-seams.md)
 
 ## Migration from v1
 
