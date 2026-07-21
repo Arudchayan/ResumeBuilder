@@ -27,6 +27,51 @@
   font-family: var(--font-body);
 }
 
+.ui-button {
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease;
+}
+
+.ui-button-primary {
+  background: var(--theme-primary);
+  color: white;
+}
+
+.ui-button-primary:hover {
+  background: var(--theme-dark);
+}
+
+.ui-button-secondary {
+  border-color: var(--workspace-line, #dce8e6);
+  background: white;
+  color: #243b3d;
+}
+
+.ui-button-secondary:hover {
+  border-color: color-mix(in srgb, var(--theme-primary) 32%, white);
+  background: var(--theme-surface, #f0f8f9);
+}
+
+.ui-button-ghost {
+  background: transparent;
+  color: #536767;
+}
+
+.ui-button-ghost:hover {
+  background: color-mix(in srgb, var(--theme-primary) 9%, white);
+  color: var(--theme-dark);
+}
+
+.ui-button-danger {
+  background: #b64646;
+  color: white;
+}
+
+.ui-button-danger:hover {
+  background: #963838;
+}
+
 .skip-to-content {
   position: absolute;
   left: -9999px;

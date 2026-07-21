@@ -16,7 +16,6 @@ node_modules
 dist
 dist-ssr
 *.local
-*.tsbuildinfo
 
 # Editor directories and files
 .cursor
@@ -41,12 +40,16 @@ dist-ssr
 coverage
 test-results
 playwright-report
-playwright/.cache
 
 # Misc
 .cache
 .temp
 .tmp
+# Local JSON exports (often contain PII)
 resume.json
+kuhavathani-resume.json
+Arudchayan_Pirabaharan.pdf
+
+# Backup files
 *.backup
 *.bak

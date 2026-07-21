@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
   KeyboardSensor,
+  PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -11,29 +11,32 @@ import {
 import {
   SortableContext,
   arrayMove,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  SECTION_CONFIG,
-  ensureSectionOrder,
-  type ResumeDocument,
-} from "@resume/core";
-import type { CSSProperties } from "react";
+import { SECTION_CONFIG, ensureSectionOrder, type ResumeDocument } from "@resume/core";
 import { documentToIr, ResumePreview, TEMPLATES } from "@resume/templates";
 import { Button, themeCssVars } from "@resume/ui";
 import {
+  Check,
   Download,
+  Eye,
+  EyeOff,
   FileJson,
   FileText,
+  GripVertical,
+  HelpCircle,
+  LayoutTemplate,
+  Maximize2,
+  Minimize2,
   Printer,
   Redo2,
+  RotateCcw,
   Undo2,
   ZoomIn,
   ZoomOut,
-  LayoutTemplate,
 } from "lucide-react";
 import { toast } from "sonner";
 import { selectDoc, useAppStore } from "../lib/store";
@@ -42,6 +45,7 @@ import { SectionEditor } from "../components/SectionEditor";
 function SortableTocItem({
   id,
   label,
+  required,
   active,
   visible,
   onSelect,
@@ -49,6 +53,7 @@ function SortableTocItem({
 }: {
   id: string;
   label: string;
+  required: boolean;
   active: boolean;
   visible: boolean;
   onSelect: () => void;
@@ -58,34 +63,39 @@ function SortableTocItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.6 : 1,
+    opacity: isDragging ? 0.58 : 1,
   };
+
   return (
-    <li ref={setNodeRef} style={style} className="flex items-center gap-1">
+    <li ref={setNodeRef} style={style} className={`toc-item ${active ? "is-active" : ""}`}>
       <button
         type="button"
-        className="cursor-grab rounded px-1 text-slate-400 hover:text-slate-700"
+        className="toc-grip"
         aria-label={`Drag to reorder ${label}`}
+        title={`Reorder ${label}`}
         {...attributes}
         {...listeners}
       >
-        ⋮⋮
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
       <button
         type="button"
         onClick={onSelect}
-        className={`flex-1 rounded-lg px-2 py-1.5 text-left text-sm ${active ? "bg-[var(--theme-primary)]/10 font-semibold text-[var(--theme-dark)]" : "text-slate-700 hover:bg-slate-100"}`}
+        className="toc-select"
+        aria-current={active ? "page" : undefined}
       >
-        {label}
+        <span className="toc-label">{label}</span>
+        {required ? <span className="toc-required">Core</span> : null}
       </button>
       <button
         type="button"
         aria-pressed={visible}
         aria-label={`${visible ? "Hide" : "Show"} ${label}`}
-        className="rounded px-2 text-xs text-slate-500 hover:bg-slate-100"
+        title={`${visible ? "Hide" : "Show"} ${label}`}
+        className="toc-visibility"
         onClick={onToggleVisible}
       >
-        {visible ? "On" : "Off"}
+        {visible ? <Eye className="h-4 w-4" aria-hidden="true" /> : <EyeOff className="h-4 w-4" aria-hidden="true" />}
       </button>
     </li>
   );
@@ -95,6 +105,11 @@ function shouldDeferUndo(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
   return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+}
+
+function formatSavedTime(timestamp: number | null) {
+  if (!timestamp) return "Ready to edit";
+  return `Saved ${new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
 export function EditorPage() {
@@ -117,36 +132,55 @@ export function EditorPage() {
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
   const [contentPadding, setContentPadding] = useState(48);
   const [fontScale, setFontScale] = useState(100);
+  const [previewMode, setPreviewMode] = useState<"fit" | "inspect">("fit");
   const previewHostRef = useRef<HTMLDivElement>(null);
 
   const order = ensureSectionOrder(doc);
   const ir = useMemo(() => documentToIr(doc), [doc]);
   const cssVars = themeCssVars(doc.theme);
+  const activeMeta = SECTION_CONFIG.find((section) => section.id === activeSection);
+  const visibleCount = order.filter((id) => doc.sectionVisibility?.[id] !== false).length;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const fitPreview = () => {
+    const host = previewHostRef.current;
+    if (!host) return;
+    const sheetPx = (210 / 25.4) * 96;
+    const available = Math.max(280, host.clientWidth - 48);
+    setZoom(Math.min(1, Math.max(0.45, available / sheetPx)));
+  };
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey;
+    if (previewMode !== "fit") return;
+    fitPreview();
+    const onResize = () => fitPreview();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [previewMode]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const mod = event.metaKey || event.ctrlKey;
       if (!mod) return;
-      if (e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        void saveNow().then(() => toast.success("Saved"));
+      if (event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        void saveNow().then(() => toast.success("Resume saved"));
         return;
       }
-      if (e.key.toLowerCase() === "z") {
-        if (shouldDeferUndo(e.target)) return;
-        e.preventDefault();
-        if (e.shiftKey) redo();
+      if (event.key.toLowerCase() === "z") {
+        if (shouldDeferUndo(event.target)) return;
+        event.preventDefault();
+        if (event.shiftKey) redo();
         else undo();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, saveNow]);
+  }, [redo, saveNow, undo]);
 
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -161,255 +195,340 @@ export function EditorPage() {
     setExporting(kind);
     try {
       const { downloadPdf, downloadDocx } = await import("@resume/export");
+      const filename = (doc.name || "resume").trim().replace(/\s+/g, "_");
       if (kind === "pdf") {
         const sheet =
-          previewHostRef.current?.querySelector<HTMLElement>(".sheet") ??
-          document.querySelector<HTMLElement>(".sheet");
-        await downloadPdf(doc, `${(doc.name || "resume").replace(/\s+/g, "_")}.pdf`, sheet);
+          previewHostRef.current?.querySelector<HTMLElement>(".sheet") ?? document.querySelector<HTMLElement>(".sheet");
+        await downloadPdf(doc, `${filename}.pdf`, sheet);
       } else {
-        await downloadDocx(doc, `${(doc.name || "resume").replace(/\s+/g, "_")}.docx`);
+        await downloadDocx(doc, `${filename}.docx`);
       }
       toast.success(kind === "pdf" ? "PDF downloaded" : "DOCX downloaded");
-    } catch (err) {
-      console.error(err);
-      toast.error("Export failed");
+    } catch (error) {
+      console.error(error);
+      toast.error("Export failed. Check the resume content and try again.");
     } finally {
       setExporting(null);
     }
   };
 
   return (
-    <div className="min-h-screen" style={cssVars as CSSProperties}>
-      <header
-        role="banner"
-        className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur"
-      >
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-3">
-          <button
-            type="button"
-            className="text-lg font-bold text-slate-900"
-            onClick={() => setScreen("gallery")}
-          >
-            Resume Builder
+    <div className="workspace-page" style={cssVars as CSSProperties}>
+      <a href="#main" className="skip-to-content">
+        Skip to editor
+      </a>
+
+      <header className="workspace-header" role="banner">
+        <div className="workspace-header-inner">
+          <button type="button" className="brand-lockup" onClick={() => setScreen("gallery")}>
+            <span className="brand-mark" aria-hidden="true">
+              <FileText className="h-4 w-4" />
+            </span>
+            <span className="brand-copy">
+              <span className="brand-title">Resume Builder</span>
+              <span className="brand-context">
+                {doc.name || "Untitled resume"} <span aria-hidden="true">·</span>{" "}
+                {TEMPLATES.find((template) => template.id === doc.template)?.name}
+              </span>
+            </span>
           </button>
-          <span className="hidden text-sm text-slate-500 sm:inline">
-            {doc.name || "Untitled"} · {TEMPLATES.find((t) => t.id === doc.template)?.name}
-          </span>
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
-            <Button variant="ghost" aria-label="Undo" disabled={history.past.length === 0} onClick={undo}>
-              <Undo2 className="h-4 w-4" />
+
+          <div className="workspace-status" aria-live="polite">
+            <span className={`status-dot ${dirty ? "is-dirty" : ""}`} aria-hidden="true" />
+            {dirty ? "Unsaved changes" : formatSavedTime(lastSaved)}
+          </div>
+
+          <div className="workspace-actions">
+            <Button
+              variant="ghost"
+              aria-label="Undo"
+              title="Undo"
+              disabled={history.past.length === 0}
+              onClick={undo}
+            >
+              <Undo2 className="h-4 w-4" aria-hidden="true" />
             </Button>
-            <Button variant="ghost" aria-label="Redo" disabled={history.future.length === 0} onClick={redo}>
-              <Redo2 className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              aria-label="Redo"
+              title="Redo"
+              disabled={history.future.length === 0}
+              onClick={redo}
+            >
+              <Redo2 className="h-4 w-4" aria-hidden="true" />
             </Button>
-            <Button variant="secondary" onClick={() => setScreen("gallery")}>
-              <LayoutTemplate className="h-4 w-4" /> Templates
+            <Button variant="secondary" className="action-secondary" onClick={() => setScreen("gallery")}>
+              <LayoutTemplate className="h-4 w-4" aria-hidden="true" />
+              <span className="action-label">Templates</span>
             </Button>
-            <Button variant="secondary" onClick={exportJson}>
-              <FileJson className="h-4 w-4" /> JSON
+            <Button variant="secondary" className="action-secondary" onClick={exportJson}>
+              <FileJson className="h-4 w-4" aria-hidden="true" />
+              <span className="action-label">JSON</span>
             </Button>
-            <Button disabled={exporting !== null} onClick={() => void runExport("pdf")}>
-              <Download className="h-4 w-4" /> {exporting === "pdf" ? "…" : "PDF"}
+            <Button
+              className="action-export"
+              disabled={exporting !== null}
+              onClick={() => void runExport("pdf")}
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              <span className="action-label">{exporting === "pdf" ? "Exporting" : "Export PDF"}</span>
             </Button>
-            <Button variant="secondary" disabled={exporting !== null} onClick={() => void runExport("docx")}>
-              <FileText className="h-4 w-4" /> {exporting === "docx" ? "…" : "DOCX"}
+            <Button
+              variant="ghost"
+              className="action-secondary"
+              aria-label="Print resume"
+              title="Print resume"
+              onClick={() => window.print()}
+            >
+              <Printer className="h-4 w-4" aria-hidden="true" />
             </Button>
-            <Button variant="ghost" onClick={() => window.print()} aria-label="Print">
-              <Printer className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" onClick={() => setModal("shortcuts")}>
-              ?
+            <Button
+              variant="ghost"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts"
+              onClick={() => setModal("shortcuts")}
+            >
+              <HelpCircle className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
-          <p className="w-full text-xs text-slate-500" aria-live="polite">
-            {dirty ? "Unsaved changes…" : lastSaved ? `Saved ${new Date(lastSaved).toLocaleTimeString()}` : "Ready"}
-          </p>
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1600px] gap-4 px-4 py-4 lg:grid-cols-[280px_minmax(0,420px)_1fr]">
-        <aside className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-slate-200/70" aria-label="Sections">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sections</h2>
-            <div className="flex gap-1 lg:hidden">
-              <Button
-                variant={mobilePane === "edit" ? "primary" : "ghost"}
-                className="!px-2 !py-1 text-xs"
-                onClick={() => setMobilePane("edit")}
-              >
-                Edit
-              </Button>
-              <Button
-                variant={mobilePane === "preview" ? "primary" : "ghost"}
-                className="!px-2 !py-1 text-xs"
-                onClick={() => setMobilePane("preview")}
-              >
-                Preview
-              </Button>
+      <div className="workspace-body">
+        <nav className="mobile-pane-switcher" aria-label="Workspace view">
+          <button
+            type="button"
+            className={mobilePane === "edit" ? "is-active" : ""}
+            aria-current={mobilePane === "edit" ? "page" : undefined}
+            onClick={() => setMobilePane("edit")}
+          >
+            Edit content
+          </button>
+          <button
+            type="button"
+            className={mobilePane === "preview" ? "is-active" : ""}
+            aria-current={mobilePane === "preview" ? "page" : undefined}
+            onClick={() => setMobilePane("preview")}
+          >
+            Preview resume
+          </button>
+        </nav>
+
+        <div className="workspace-layout">
+          <aside className={`workspace-sidebar ${mobilePane === "preview" ? "is-mobile-hidden" : ""}`} aria-label="Resume setup">
+            <div className="workspace-sidebar-head">
+              <div>
+                <p className="eyebrow">Build</p>
+                <h2 className="panel-title">Sections</h2>
+              </div>
+              <span className="section-count" aria-label={`${visibleCount} of ${order.length} sections visible`}>
+                {visibleCount}/{order.length}
+              </span>
             </div>
-          </div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={order} strategy={verticalListSortingStrategy}>
-              <ul className="space-y-0.5">
-                {order.map((id) => {
-                  const meta = SECTION_CONFIG.find((s) => s.id === id);
-                  return (
-                    <SortableTocItem
-                      key={id}
-                      id={id}
-                      label={meta?.label ?? id}
-                      active={activeSection === id}
-                      visible={doc.sectionVisibility?.[id] !== false}
-                      onSelect={() => {
-                        setActiveSection(id);
-                        setMobilePane("edit");
-                      }}
-                      onToggleVisible={() =>
-                        apply({
-                          type: "setSectionVisibility",
-                          id,
-                          visible: doc.sectionVisibility?.[id] === false,
-                        })
-                      }
-                    />
-                  );
-                })}
-              </ul>
-            </SortableContext>
-          </DndContext>
+            <p className="panel-hint">Choose a section to edit. Drag to change its order, or hide it from the resume.</p>
 
-          <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500" htmlFor="theme-select">
-              Theme
-            </label>
-            <select
-              id="theme-select"
-              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-              value={doc.theme}
-              onChange={(e) => apply({ type: "setTheme", theme: e.target.value })}
-            >
-              <option value="teal">Teal</option>
-              <option value="blue">Professional Blue</option>
-              <option value="purple">Creative Purple</option>
-              <option value="green">Nature Green</option>
-              <option value="slate">Classic Gray</option>
-              <option value="black">Executive Black</option>
-              <option value="forest">Forest</option>
-              <option value="copper">Copper</option>
-            </select>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500" htmlFor="template-select">
-              Template
-            </label>
-            <select
-              id="template-select"
-              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-              value={doc.template}
-              onChange={(e) =>
-                apply({ type: "setTemplate", template: e.target.value as ResumeDocument["template"] })
-              }
-            >
-              {TEMPLATES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </aside>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={order} strategy={verticalListSortingStrategy}>
+                <ul className="toc-list" aria-label="Resume sections">
+                  {order.map((id) => {
+                    const meta = SECTION_CONFIG.find((section) => section.id === id);
+                    const isVisible = doc.sectionVisibility?.[id] !== false;
+                    return (
+                      <SortableTocItem
+                        key={id}
+                        id={id}
+                        label={meta?.label ?? id}
+                        required={Boolean(meta?.required)}
+                        active={activeSection === id}
+                        visible={isVisible}
+                        onSelect={() => {
+                          setActiveSection(id);
+                          setMobilePane("edit");
+                        }}
+                        onToggleVisible={() =>
+                          apply({
+                            type: "setSectionVisibility",
+                            id,
+                            visible: !isVisible,
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </ul>
+              </SortableContext>
+            </DndContext>
 
-        <section
-          id="main"
-          className={`rounded-2xl bg-white/90 p-4 shadow-sm ring-1 ring-slate-200/70 ${mobilePane === "preview" ? "hidden lg:block" : ""}`}
-          aria-label="Editor"
-        >
-          <SectionEditor doc={doc} sectionId={activeSection} apply={apply} />
-        </section>
-
-        <section
-          className={`rounded-2xl bg-slate-100/80 p-4 ${mobilePane === "edit" ? "hidden lg:block" : ""}`}
-          aria-label="Preview"
-        >
-          <div className="mb-3 flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Live Preview</span>
-            <Button variant="ghost" aria-label="Zoom out" onClick={() => setZoom(zoom - 0.05)}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-xs tabular-nums text-slate-600">{Math.round(zoom * 100)}%</span>
-            <Button variant="ghost" aria-label="Zoom in" onClick={() => setZoom(zoom + 0.05)}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="secondary"
-              className="!py-1 text-xs"
-              onClick={() => {
-                const host = previewHostRef.current;
-                if (!host) {
-                  setZoom(0.72);
-                  return;
-                }
-                const available = host.clientWidth - 24;
-                const sheetPx = (210 / 25.4) * 96;
-                setZoom(Math.min(1, Math.max(0.45, available / sheetPx)));
-              }}
-            >
-              Fit
-            </Button>
-            <label className="flex items-center gap-1 text-xs text-slate-600">
-              Pad
-              <input
-                type="range"
-                min={24}
-                max={64}
-                step={4}
-                value={contentPadding}
-                onChange={(e) => setContentPadding(Number(e.target.value))}
-                className="w-20"
-              />
-            </label>
-            <label className="flex items-center gap-1 text-xs text-slate-600">
-              Font
-              <input
-                type="range"
-                min={85}
-                max={115}
-                step={5}
-                value={fontScale}
-                onChange={(e) => setFontScale(Number(e.target.value))}
-                className="w-20"
-              />
-              <span className="tabular-nums">{fontScale}%</span>
-            </label>
-            <Button
-              variant="ghost"
-              className="!py-1 text-xs"
-              onClick={() => {
-                setContentPadding(48);
-                setFontScale(100);
-                toast.success("Layout reset");
-              }}
-            >
-              Reset
-            </Button>
-            <div className="ml-auto flex gap-2 lg:hidden">
-              <Button disabled={exporting !== null} onClick={() => void runExport("pdf")}>
-                PDF
-              </Button>
-              <Button variant="secondary" disabled={exporting !== null} onClick={() => void runExport("docx")}>
-                DOCX
-              </Button>
+            <div className="sidebar-settings">
+              <span className="settings-label">Appearance</span>
+              <label className="field-stack" htmlFor="theme-select">
+                <span className="settings-label">Accent</span>
+                <select
+                  id="theme-select"
+                  className="select-control w-full rounded-xl border bg-white px-3 py-2 text-sm"
+                  value={doc.theme}
+                  onChange={(event) => apply({ type: "setTheme", theme: event.target.value })}
+                >
+                  <option value="teal">Teal</option>
+                  <option value="blue">Professional Blue</option>
+                  <option value="purple">Creative Purple</option>
+                  <option value="green">Nature Green</option>
+                  <option value="slate">Classic Gray</option>
+                  <option value="black">Executive Black</option>
+                  <option value="forest">Forest</option>
+                  <option value="copper">Copper</option>
+                </select>
+              </label>
+              <label className="field-stack" htmlFor="template-select">
+                <span className="settings-label">Template</span>
+                <select
+                  id="template-select"
+                  className="select-control w-full rounded-xl border bg-white px-3 py-2 text-sm"
+                  value={doc.template}
+                  onChange={(event) =>
+                    apply({ type: "setTemplate", template: event.target.value as ResumeDocument["template"] })
+                  }
+                >
+                  {TEMPLATES.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-          </div>
-          <div ref={previewHostRef} className="overflow-auto rounded-xl bg-slate-200/60 p-4">
-            <ResumePreview
-              doc={doc}
-              ir={ir}
-              zoom={zoom}
-              contentPadding={contentPadding}
-              fontScale={fontScale}
-              onSectionClick={setActiveSection}
-            />
-          </div>
-        </section>
+          </aside>
+
+          <section
+            id="main"
+            className={`workspace-editor ${mobilePane === "preview" ? "is-mobile-hidden" : ""}`}
+            aria-label="Resume editor"
+          >
+            <div className="editor-panel-head">
+              <div>
+                <p className="eyebrow">Edit content</p>
+                <h2 className="panel-title">{activeMeta?.label ?? "Section"}</h2>
+              </div>
+              <span className="section-state">
+                {doc.sectionVisibility?.[activeSection] === false ? (
+                  <>
+                    <EyeOff className="h-3.5 w-3.5" aria-hidden="true" /> Hidden
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" /> Visible
+                  </>
+                )}
+              </span>
+            </div>
+            <div className="editor-scroll">
+              <SectionEditor doc={doc} sectionId={activeSection} apply={apply} />
+              <div className="mobile-action-row">
+                <Button variant="secondary" disabled={exporting !== null} onClick={() => void runExport("docx")}>
+                  <FileText className="h-4 w-4" aria-hidden="true" /> DOCX
+                </Button>
+                <Button disabled={exporting !== null} onClick={() => void runExport("pdf")}>
+                  <Download className="h-4 w-4" aria-hidden="true" /> PDF
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          <section
+            className={`workspace-preview ${mobilePane === "edit" ? "is-mobile-hidden" : ""}`}
+            aria-label="Resume preview"
+          >
+            <div className="preview-panel-head">
+              <div>
+                <p className="eyebrow">Live canvas</p>
+                <h2 className="panel-title">Preview resume</h2>
+              </div>
+              <span className="section-state">A4 · {Math.round(zoom * 100)}%</span>
+            </div>
+            <div className="preview-toolbar">
+              <Button variant="ghost" aria-label="Zoom out" title="Zoom out" onClick={() => { setPreviewMode("inspect"); setZoom(zoom - 0.05); }}>
+                <ZoomOut className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              <span className="preview-zoom">{Math.round(zoom * 100)}%</span>
+              <Button variant="ghost" aria-label="Zoom in" title="Zoom in" onClick={() => { setPreviewMode("inspect"); setZoom(zoom + 0.05); }}>
+                <ZoomIn className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              <Button
+                variant={previewMode === "fit" ? "primary" : "secondary"}
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => {
+                  setPreviewMode("fit");
+                  requestAnimationFrame(fitPreview);
+                }}
+              >
+                <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" /> Fit width
+              </Button>
+              <Button
+                variant={previewMode === "inspect" ? "primary" : "secondary"}
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => {
+                  setPreviewMode("inspect");
+                  setZoom(1);
+                }}
+              >
+                <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Full size
+              </Button>
+              <Button
+                variant="ghost"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => {
+                  setContentPadding(48);
+                  setFontScale(100);
+                  setPreviewMode("fit");
+                  requestAnimationFrame(fitPreview);
+                  toast.success("Preview layout reset");
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> Reset
+              </Button>
+              <span className="preview-toolbar-divider" aria-hidden="true" />
+              <label className="range-control" htmlFor="content-padding">
+                Pad
+                <input
+                  id="content-padding"
+                  type="range"
+                  min={24}
+                  max={64}
+                  step={4}
+                  value={contentPadding}
+                  onChange={(event) => setContentPadding(Number(event.target.value))}
+                />
+                <span className="range-value">{contentPadding}</span>
+              </label>
+              <label className="range-control" htmlFor="font-scale">
+                Font
+                <input
+                  id="font-scale"
+                  type="range"
+                  min={85}
+                  max={115}
+                  step={5}
+                  value={fontScale}
+                  onChange={(event) => setFontScale(Number(event.target.value))}
+                />
+                <span className="range-value">{fontScale}%</span>
+              </label>
+            </div>
+            <div ref={previewHostRef} className={`preview-stage ${previewMode === "inspect" ? "is-inspecting" : ""}`}>
+              <ResumePreview
+                doc={doc}
+                ir={ir}
+                zoom={zoom}
+                contentPadding={contentPadding}
+                fontScale={fontScale}
+                onSectionClick={(sectionId) => {
+                  setActiveSection(sectionId);
+                  setMobilePane("edit");
+                }}
+              />
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

@@ -97,7 +97,11 @@ export function ClassicSidebarSheet({
                   {(s.bullets || [])
                     .filter((b) => b && b.trim())
                     .map((b, k) => (
-                      <div key={k} className="my-1 grid grid-cols-[12px_1fr] gap-2 text-[12.5px]">
+                      <div
+                        key={k}
+                        className="my-1 grid gap-2 text-[12.5px]"
+                        style={{ gridTemplateColumns: "12px 1fr" }}
+                      >
                         <span style={{ color: "var(--theme-dark)" }}>•</span>
                         <span>{clean(b)}</span>
                       </div>
@@ -244,7 +248,7 @@ export function ClassicSidebarSheet({
         fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       }}
     >
-      <div className="grid grid-cols-[30%_1fr]" style={{ minHeight: "297mm" }}>
+      <div className="grid" style={{ gridTemplateColumns: "30% 1fr", minHeight: "297mm" }}>
         <aside
           className="border-r"
           style={{

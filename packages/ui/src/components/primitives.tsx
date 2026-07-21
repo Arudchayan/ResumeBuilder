@@ -15,16 +15,10 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost" | "danger";
 }) {
-  const variants: Record<string, string> = {
-    primary: "bg-[var(--theme-primary)] text-white hover:opacity-90",
-    secondary: "bg-white text-slate-800 border border-slate-200 hover:bg-slate-50",
-    ghost: "bg-transparent text-slate-700 hover:bg-slate-100",
-    danger: "bg-red-600 text-white hover:bg-red-700",
-  };
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-opacity disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`ui-button ui-button-${variant} inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)]/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${className}`}
       {...props}
     />
   );
@@ -40,7 +34,7 @@ export function Label({
   className?: string;
 }) {
   return (
-    <label htmlFor={htmlFor} className={`block text-xs font-semibold uppercase tracking-wide text-slate-500 ${className}`}>
+    <label htmlFor={htmlFor} className={`block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-500 ${className}`}>
       {children}
     </label>
   );
@@ -60,7 +54,7 @@ export function Field({
         id={id}
         aria-invalid={Boolean(error) || undefined}
         aria-describedby={error ? errorId : undefined}
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-[var(--theme-primary)] focus:ring-2"
+        className="field-control w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--theme-primary)] focus:ring-2"
         {...props}
       />
       {error ? (
@@ -86,7 +80,7 @@ export function TextAreaField({
         id={id}
         aria-invalid={Boolean(error) || undefined}
         aria-describedby={error ? errorId : undefined}
-        className="min-h-[96px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-[var(--theme-primary)] focus:ring-2"
+        className="field-control min-h-[112px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--theme-primary)] focus:ring-2"
         {...props}
       />
       {error ? (
@@ -159,7 +153,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
+        className="relative z-10 max-h-[min(720px,calc(100dvh-2rem))] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-6"
       >
         <h2 id={titleId} className="font-display text-xl text-slate-900">
           {title}

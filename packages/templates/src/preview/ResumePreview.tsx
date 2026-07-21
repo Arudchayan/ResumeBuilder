@@ -76,7 +76,11 @@ function BlockView({
       return (
         <div className="mt-1" {...clickable}>
           {block.items.map((item, i) => (
-            <div key={`${i}-${item.slice(0, 12)}`} className="my-1 grid grid-cols-[12px_1fr] gap-2 text-[12.5px]">
+            <div
+              key={`${i}-${item.slice(0, 12)}`}
+              className="my-1 grid gap-2 text-[12.5px]"
+              style={{ gridTemplateColumns: "12px 1fr" }}
+            >
               <span className="text-[var(--theme-dark)]">•</span>
               <span className="text-slate-800">{item}</span>
             </div>
@@ -115,7 +119,11 @@ function BlockView({
             <div key={i} className="mt-2">
               {sec.title ? <div className="font-semibold">{sec.title}</div> : null}
               {sec.bullets.map((line, j) => (
-                <div key={j} className="my-1 grid grid-cols-[12px_1fr] gap-2 text-[12.5px]">
+                <div
+                  key={j}
+                  className="my-1 grid gap-2 text-[12.5px]"
+                  style={{ gridTemplateColumns: "12px 1fr" }}
+                >
                   <span>•</span>
                   <span>{line}</span>
                 </div>
