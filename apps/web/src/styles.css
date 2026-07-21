@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "@resume/ui/styles.css";
+
+@theme {
+  --font-sans: "Source Sans 3", "Segoe UI", sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #ccfbf1 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #e0f2fe 0%, transparent 50%),
+    #f8fafc;
+  color: #0f172a;
+}
+
+.sheet {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up var(--motion-med) ease-out both;
+}
