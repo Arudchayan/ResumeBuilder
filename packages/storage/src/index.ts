@@ -1,8 +1,8 @@
 import {
   blankResume,
   parseResumeData,
+  normalizeTemplateId,
   type ResumeDocument,
-  TEMPLATE_IDS,
   type TemplateId,
 } from "@resume/core";
 import type { ResumeLibraryPort, ResumeMeta, StoragePort } from "@resume/ports";
@@ -27,15 +27,6 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-function mapLegacyTemplate(raw: unknown): TemplateId {
-  if (typeof raw === "string" && (TEMPLATE_IDS as readonly string[]).includes(raw)) {
-    return raw as TemplateId;
-  }
-  // Old app used "modern" for the sidebar layout
-  if (raw === "modern") return "sidebar";
-  return "sidebar";
-}
-
 /** Migrate localStorage resume_draft → IndexedDB once. */
 export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
   if (typeof localStorage === "undefined") return null;
@@ -48,7 +39,7 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     delete parsed._savedAt;
-    parsed.template = mapLegacyTemplate(parsed.template);
+    parsed.template = normalizeTemplateId(parsed.template);
     if (!parsed.id) parsed.id = crypto.randomUUID?.() ?? `migrated-${Date.now()}`;
     const doc = parseResumeData(parsed);
     const storage = new IndexedDbStorage();
@@ -128,7 +119,7 @@ export class LocalResumeLibrary implements ResumeLibraryPort {
 
   async create(template = "sidebar") {
     const doc = blankResume({
-      template: mapLegacyTemplate(template),
+      template: normalizeTemplateId(template),
     });
     await this.storage.save(doc);
     return doc;

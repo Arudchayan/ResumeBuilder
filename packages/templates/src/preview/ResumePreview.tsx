@@ -29,26 +29,29 @@ function BlockView({
     case "heading":
       if (block.level === 1) {
         return (
-          <h1
-            className="font-display text-[28px] font-semibold leading-tight text-[var(--theme-dark)]"
-            {...clickable}
-          >
+          <h1 className="text-3xl font-extrabold leading-tight text-slate-900" {...clickable}>
             {block.text}
           </h1>
         );
       }
       return (
         <h2
-          className={`mt-3 border-b border-[var(--theme-primary)]/30 pb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--theme-primary)] ${compact ? "mt-2" : ""}`}
+          className="mb-2 mt-4 text-[12px] font-extrabold uppercase tracking-[0.18em] text-[var(--theme-dark)]"
           {...clickable}
         >
           {block.text}
         </h2>
       );
+    case "accentBar":
+      return <div className="my-4 h-1.5 w-16 rounded-full bg-[var(--theme-primary)]" />;
     case "paragraph":
       return (
         <p
-          className={`mt-1 text-[12px] leading-relaxed text-slate-700 ${block.muted ? "text-[13px] font-medium text-[var(--theme-dark)]" : ""} ${compact ? "text-[11px]" : ""}`}
+          className={
+            block.muted
+              ? "mt-1 font-bold text-[var(--theme-dark)]"
+              : `text-[13px] leading-relaxed text-slate-800 ${compact ? "text-[12px]" : ""}`
+          }
           {...clickable}
         >
           {block.text}
@@ -56,11 +59,11 @@ function BlockView({
       );
     case "chips":
       return (
-        <div className="mt-2 flex flex-wrap gap-1.5" {...clickable}>
+        <div className="mt-1 flex flex-wrap gap-2" {...clickable}>
           {block.items.map((item) => (
             <span
               key={item}
-              className="rounded-full bg-[var(--theme-primary)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--theme-dark)]"
+              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11.5px] text-slate-800"
             >
               {item}
             </span>
@@ -69,55 +72,112 @@ function BlockView({
       );
     case "bullets":
       return (
-        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[12px] text-slate-700" {...clickable}>
+        <div className="mt-1" {...clickable}>
           {block.items.map((item, i) => (
-            <li key={`${i}-${item.slice(0, 12)}`}>{item}</li>
+            <div key={`${i}-${item.slice(0, 12)}`} className="my-1 grid grid-cols-[12px_1fr] gap-2 text-[12.5px]">
+              <span className="text-[var(--theme-dark)]">•</span>
+              <span className="text-slate-800">{item}</span>
+            </div>
           ))}
-        </ul>
+        </div>
       );
     case "kv":
       return (
-        <div className="mt-1.5 text-[11px]" {...clickable}>
-          <div className="font-semibold text-[var(--theme-dark)]">{block.label}</div>
-          <div className="break-all text-slate-600">{block.value}</div>
+        <div className="my-2 text-[12px] text-slate-800" {...clickable}>
+          <div className="mb-0.5 text-[10px] uppercase tracking-wider text-slate-500">{block.label}</div>
+          <div className="break-all leading-relaxed">
+            {block.href ? (
+              <a
+                href={block.href}
+                className="font-medium text-[var(--theme-primary)] hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {block.value}
+              </a>
+            ) : (
+              <span>{block.value}</span>
+            )}
+          </div>
+        </div>
+      );
+    case "link":
+      return (
+        <div className="space-y-1.5" {...clickable}>
+          <a
+            href={block.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="block text-[12px] font-medium text-[var(--theme-primary)] hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {block.label}
+          </a>
         </div>
       );
     case "photo":
       return (
         <button
           type="button"
-          className="mb-3 block overflow-hidden rounded-full border-2 border-white shadow"
+          className="mb-6 flex w-full items-center justify-center"
           onClick={() => onSectionClick?.("photo")}
         >
-          <img src={block.src} alt="" className="h-24 w-24 object-cover" />
+          <img
+            src={block.src}
+            alt="Profile"
+            className="h-28 w-28 rounded-full border object-cover shadow-sm"
+          />
         </button>
+      );
+    case "lineItem":
+      return (
+        <div className="my-1 text-[12.5px] text-slate-800" {...clickable}>
+          <span className="font-semibold">{block.text}</span>{" "}
+          {block.muted ? <span className="text-slate-500">{block.muted}</span> : null}
+        </div>
       );
     case "entry":
       return (
-        <article className={`mt-2 ${compact ? "mt-1.5" : ""}`} {...clickable}>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="text-[13px] font-semibold text-slate-900">{block.title}</h3>
-            {block.meta ? <span className="text-[10px] text-slate-500">{block.meta}</span> : null}
+        <article className="mb-3" {...clickable}>
+          <div className="text-sm font-bold text-slate-900">
+            {block.title}
+            {block.url ? (
+              <a
+                href={block.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="ml-1.5 text-xs text-[var(--theme-primary)] hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                ↗
+              </a>
+            ) : null}
           </div>
-          {block.subtitle ? <p className="text-[11px] text-slate-600">{block.subtitle}</p> : null}
-          {block.url ? (
-            <a
-              href={block.url}
-              className="text-[10px] text-[var(--theme-primary)] underline"
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {block.url}
-            </a>
+          {block.subtitle ? (
+            <div className="text-sm font-semibold text-slate-500">{block.subtitle}</div>
           ) : null}
-          {block.body?.length ? (
-            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-slate-700">
-              {block.body.map((line, i) => (
-                <li key={`${i}-${line.slice(0, 16)}`}>{line}</li>
+          {block.meta ? <div className="mt-0.5 text-xs text-slate-500">{block.meta}</div> : null}
+          {block.subsections?.map((sec, i) => (
+            <div key={i} className="mt-2">
+              {sec.title ? <div className="mt-1 font-semibold text-slate-900">{sec.title}</div> : null}
+              {sec.bullets.map((line, j) => (
+                <div key={j} className="my-1 grid grid-cols-[12px_1fr] gap-2 text-[12.5px]">
+                  <span className="text-[var(--theme-dark)]">•</span>
+                  <span className="text-slate-800">{line}</span>
+                </div>
               ))}
-            </ul>
-          ) : null}
+            </div>
+          ))}
+          {block.body?.map((line, i) =>
+            line.startsWith("Tech:") ? (
+              <div key={i} className="mt-1 text-[11.5px] text-slate-600">
+                <span className="font-semibold">Tech:</span> {line.slice(5).trim()}
+              </div>
+            ) : (
+              <p key={i} className="mt-1 text-[12.5px] text-slate-800">
+                {line}
+              </p>
+            ),
+          )}
         </article>
       );
     case "spacer":
@@ -160,7 +220,7 @@ export function ResumePreview({
         style={{
           width: widthPx,
           minHeight: minHeightPx,
-          fontSize: compact ? 11 : 12,
+          fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
         }}
       >
         {page.columns.map((col) => {
@@ -168,14 +228,11 @@ export function ResumePreview({
           return (
             <div
               key={col.id}
-              style={{ width: `${col.width * 100}%` }}
-              className={
-                isAside
-                  ? "bg-[var(--theme-surface)] p-5"
-                  : isSidebar
-                    ? "flex-1 p-6"
-                    : "w-full"
-              }
+              style={{
+                width: `${col.width * 100}%`,
+                background: isAside ? "linear-gradient(180deg, var(--theme-surface), #fff)" : undefined,
+              }}
+              className={isAside ? "p-5" : isSidebar ? "flex-1 p-6" : "w-full"}
             >
               {col.blocks.map((block, idx) => (
                 <BlockView

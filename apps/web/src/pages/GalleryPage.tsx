@@ -1,6 +1,7 @@
 import { TEMPLATES, TemplateThumb } from "@resume/templates";
 import type { TemplateId } from "@resume/core";
 import { Button } from "@resume/ui";
+import { toast } from "sonner";
 import { useAppStore } from "../lib/store";
 
 export function GalleryPage() {
@@ -9,63 +10,69 @@ export function GalleryPage() {
   const setModal = useAppStore((s) => s.setModal);
   const importJsonFile = useAppStore((s) => s.importJsonFile);
 
+  const onImport = async (file: File) => {
+    try {
+      await importJsonFile(file);
+      toast.success("Resume imported");
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not import JSON — check it was exported from this builder");
+    }
+  };
+
   return (
-    <div className="min-h-screen">
-      <header role="banner" className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div>
-          <p className="font-display text-3xl tracking-tight text-slate-900 md:text-4xl">Resume Forge</p>
-          <p className="mt-1 text-sm text-slate-600">Local-first resumes. Your data stays in this browser.</p>
+    <div className="min-h-screen bg-slate-50">
+      <header
+        role="banner"
+        className="border-b border-slate-200 bg-white"
+      >
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Resume Builder</h1>
+            <p className="text-sm text-slate-500">Edit locally. Export PDF or DOCX. Your data stays in this browser.</p>
+          </div>
+          <nav aria-label="Product" className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" onClick={() => setModal("about")}>
+              About
+            </Button>
+            <Button variant="ghost" onClick={() => setModal("privacy")}>
+              Privacy
+            </Button>
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700">
+              Import JSON
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void onImport(file);
+                }}
+              />
+            </label>
+          </nav>
         </div>
-        <nav aria-label="Product" className="flex flex-wrap gap-2">
-          <Button variant="ghost" onClick={() => setModal("about")}>
-            About
-          </Button>
-          <Button variant="ghost" onClick={() => setModal("privacy")}>
-            Privacy
-          </Button>
-          <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50">
-            Import JSON
-            <input
-              type="file"
-              accept="application/json,.json"
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void importJsonFile(file);
-              }}
-            />
-          </label>
-        </nav>
       </header>
 
-      <main id="main" className="mx-auto max-w-6xl px-6 pb-16">
-        <section className="animate-fade-up rounded-3xl bg-slate-900 px-8 py-12 text-white">
-          <h1 className="font-display text-4xl md:text-5xl">Choose a template</h1>
-          <p className="mt-3 max-w-xl text-slate-300">
-            Pick a layout, edit section by section, and export a vector PDF or DOCX that matches the preview.
-          </p>
-        </section>
+      <main id="main" className="mx-auto max-w-5xl px-4 py-8">
+        <div className="mb-6 rounded-xl border border-teal-100 bg-teal-50/60 px-4 py-3 text-sm text-teal-900">
+          Have an existing <code className="rounded bg-white px-1">resume.json</code>? Use <strong>Import JSON</strong> —
+          files from the previous version (including <code className="rounded bg-white px-1">template: &quot;modern&quot;</code>) are supported.
+        </div>
 
-        <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {TEMPLATES.map((t, index) => (
-            <li
-              key={t.id}
-              className="animate-fade-up rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-slate-200/80 backdrop-blur"
-              style={{ animationDelay: `${index * 80}ms` }}
-            >
+        <h2 className="text-lg font-semibold text-slate-800">Start with a template</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Classic Sidebar matches the original teal two-column layout.
+        </p>
+
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {TEMPLATES.map((t) => (
+            <li key={t.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <TemplateThumb accent={t.previewAccent} />
-              <h2 className="mt-4 font-display text-xl text-slate-900">{t.name}</h2>
+              <h3 className="mt-3 font-semibold text-slate-900">{t.name}</h3>
               <p className="mt-1 text-sm text-slate-600">{t.description}</p>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                {t.atsFriendly ? (
-                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-800">ATS-friendly</span>
-                ) : null}
-                {t.supportsPhoto ? (
-                  <span className="rounded-full bg-sky-50 px-2 py-0.5 text-sky-800">Photo</span>
-                ) : null}
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button onClick={() => void startBlank(t.id as TemplateId)}>Start blank</Button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button onClick={() => void startBlank(t.id as TemplateId)}>Blank</Button>
                 <Button variant="secondary" onClick={() => void startSample(t.id as TemplateId)}>
                   Load sample
                 </Button>

@@ -1,0 +1,275 @@
+{
+  "name": "Arudchayan Pirabaharan",
+  "headline": "Data Science, Research & Senior Data Engineer",
+  "summary": "Data Science and Research Engineer with senior-level industry experience building reliable analytical data platforms, reproducible pipelines, and automated data-processing workflows. Strong in Python, SQL, PySpark, data cleaning, transformation, validation, and cloud-based analytics, with experience converting complex multi-source data into structured datasets and practical analytical solutions. Retains strong data engineering, DataOps, and platform architecture capabilities while pursuing research-oriented work in empirical analysis and machine-learning-based forecasting. Incoming MSc Data Science student at the University of Basel.",
+  "contact": {
+    "location": "Colombo 15, Sri Lanka",
+    "phone": "+94 71 209 9432",
+    "email": "arudchayan01@gmail.com"
+  },
+  "links": [
+    {
+      "label": "LinkedIn",
+      "url": "https://www.linkedin.com/in/arudchayan-pirabaharan-1b9002216/"
+    }
+  ],
+  "skills": [
+    "Python",
+    "SQL",
+    "T-SQL",
+    "PySpark",
+    "Apache Spark",
+    "Data Cleaning & Transformation",
+    "Data Analysis",
+    "Statistical Analysis",
+    "Machine Learning",
+    "ETL / ELT",
+    "Reproducible Data Pipelines",
+    "Data Quality & Validation",
+    "Automated Data Acquisition",
+    "API Integration",
+    "Databricks",
+    "Microsoft Fabric",
+    "Azure Synapse Analytics",
+    "Azure Data Factory",
+    "Power BI",
+    "DataOps",
+    "CI/CD",
+    "Data Warehousing",
+    "NoSQL",
+    "Vector Databases",
+    "Azure",
+    "GCP",
+    "OCI",
+    "Architectural Optimization"
+  ],
+  "jobs": [
+    {
+      "role": "Senior Data Engineer",
+      "company": "Nimbus",
+      "location": "Remote",
+      "start": "Jun 2026",
+      "end": "Present",
+      "sections": [
+        {
+          "title": "Property Data Platform",
+          "bullets": [
+            "Lead and improve data workflows supporting a property-data platform, integrating multi-source property and geospatial data into reliable analytical processes.",
+            "Drive data quality, processing-efficiency, and platform-improvement initiatives across Spark-based and cloud-native workflows.",
+            "Contribute to architectural decisions and the continued evolution of the platform following its migration from Azure to GCP."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Data Engineer",
+      "company": "Nimbus",
+      "location": "London Area, United Kingdom (Remote)",
+      "start": "Feb 2025",
+      "end": "Jul 2026",
+      "sections": [
+        {
+          "title": "Property Data Platform",
+          "bullets": [
+            "Engineered data workflows supporting a property-data platform, integrating information from multiple sources into reliable downstream datasets.",
+            "Developed a proof of concept on Microsoft Fabric and evaluated integration with geospatial and analytical tools.",
+            "Used Spark-based processing to improve geospatial data quality, processing efficiency, and scalability.",
+            "Contributed to platform architecture improvements and supported migration from Azure to GCP while maintaining data continuity and functionality."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Researcher",
+      "company": "BrAIN Labs",
+      "location": "Colombo",
+      "start": "Oct 2024",
+      "end": "Present",
+      "sections": [
+        {
+          "title": "Research Focus",
+          "bullets": [
+            "Contribute to research-oriented work in data and AI, with an emphasis on applied experimentation, technical investigation, and translating emerging methods into practical use cases."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Data & AI Engineer",
+      "company": "Creative Software",
+      "location": "Colombo, Western Province, Sri Lanka (Hybrid)",
+      "start": "Feb 2024",
+      "end": "Jan 2025",
+      "sections": [
+        {
+          "title": "Data Platforms and Applied Analytics",
+          "bullets": [
+            "Designed and implemented ELT workflows for financial, ERP, and operational datasets used in reporting and analysis.",
+            "Built PySpark and SQL transformations in Azure Synapse and Databricks to prepare structured analytical datasets and data-lakehouse layers.",
+            "Automated data extraction, orchestration, monitoring, and deployment through PowerShell, Azure Functions, Synapse Pipelines, and Azure DevOps CI/CD.",
+            "Developed dashboards and reporting datasets in Power BI, with attention to data quality, consistency, and repeatability.",
+            "Contributed to a generative-AI data platform for ingesting and analysing structured and unstructured enterprise data, using Azure OpenAI, vector search, APIs, and cloud services."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Cloud Data Engineer Intern",
+      "company": "Creative Software",
+      "location": "Colombo, Western Province, Sri Lanka (Hybrid)",
+      "start": "Dec 2022",
+      "end": "Jan 2024",
+      "sections": [
+        {
+          "title": "Cloud Data Engineering and Analytics",
+          "bullets": [
+            "Supported enterprise data and AI projects across data ingestion, transformation, cloud analytics, and reporting.",
+            "Built practical experience with Python, SQL, Spark, Azure data services, and production-oriented data workflows before progressing into a full-time Data & AI Engineer role."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Data / Research Engineer (Freelance)",
+      "company": "Independent",
+      "location": "Colombo",
+      "start": "Aug 2021",
+      "end": "Present",
+      "sections": [
+        {
+          "title": "Selected Independent Work",
+          "bullets": [
+            "Delivered independent data and research-engineering support covering data preparation, pipeline development, analytical tooling, and technical problem solving."
+          ]
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "title": "Real-time Data Pipeline Optimization Tool",
+      "when": "Mar 2024 — Aug 2024",
+      "description": "Built a performance-monitoring tool for Databricks pipelines with automated bottleneck detection and a recommendation component to support more reliable and efficient data processing.",
+      "tech": [
+        "Python",
+        "Databricks",
+        "Apache Spark",
+        "Power BI"
+      ]
+    }
+  ],
+  "certs": [
+    {
+      "title": "Microsoft Certified: Azure AI Engineer Associate",
+      "org": "Microsoft",
+      "when": "Jun 2025"
+    },
+    {
+      "title": "Oracle AI Vector Search Certified Professional",
+      "org": "Oracle",
+      "when": "Mar 2025"
+    },
+    {
+      "title": "Microsoft Certified: Fabric Data Engineer Associate",
+      "org": "Microsoft",
+      "when": "Sep 2024"
+    },
+    {
+      "title": "Oracle Cloud Infrastructure 2024 Generative AI Certified Professional",
+      "org": "Oracle",
+      "when": "Jul 2024"
+    },
+    {
+      "title": "AI/ML in Precision Medicine",
+      "org": "Stanford University School of Medicine",
+      "when": "May 2024"
+    },
+    {
+      "title": "Data Science in Precision Medicine and Cloud Computing",
+      "org": "Stanford University School of Medicine",
+      "when": "May 2024"
+    },
+    {
+      "title": "Microsoft Certified: Azure Data Engineer Associate",
+      "org": "Microsoft",
+      "when": "Mar 2023"
+    },
+    {
+      "title": "Microsoft Certified: Azure Data Fundamentals",
+      "org": "Microsoft",
+      "when": "Dec 2022"
+    },
+    {
+      "title": "Microsoft Certified: Azure Fundamentals",
+      "org": "Microsoft",
+      "when": "Dec 2022"
+    }
+  ],
+  "edus": [
+    {
+      "degree": "MSc Data Science (Incoming Student)",
+      "school": "University of Basel",
+      "when": "2026 —"
+    },
+    {
+      "degree": "BSc (Hons) Information Technology (Data Science)",
+      "school": "Sri Lanka Institute of Information Technology, Colombo",
+      "when": "Jun 2021 — Jun 2025"
+    },
+    {
+      "degree": "Professional Graduate Diploma - HEQ",
+      "school": "British Computer Society (BCS), UK",
+      "when": "2018 — 2021"
+    }
+  ],
+  "languages": [
+    {
+      "name": "English",
+      "level": "Fluent"
+    },
+    {
+      "name": "Tamil",
+      "level": "Native"
+    },
+    {
+      "name": "Sinhala",
+      "level": "Intermediate"
+    }
+  ],
+  "publications": [],
+  "awards": [],
+  "photo": {
+    "enabled": false,
+    "url": "",
+    "dataUrl": ""
+  },
+  "sectionVisibility": {
+    "identity": true,
+    "photo": false,
+    "contact": true,
+    "skills": true,
+    "employment": true,
+    "projects": true,
+    "certs": true,
+    "edus": true,
+    "languages": true,
+    "publications": false,
+    "awards": false
+  },
+  "sectionOrder": [
+    "identity",
+    "photo",
+    "contact",
+    "edus",
+    "skills",
+    "employment",
+    "projects",
+    "certs",
+    "languages",
+    "publications",
+    "awards"
+  ],
+  "theme": "teal",
+  "template": "modern",
+  "customSections": []
+}

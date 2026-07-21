@@ -19,6 +19,29 @@ describe("resumeSchema", () => {
     const result = validateResumeData(blankResume({ contact: { email: "nope", phone: "", location: "" } }));
     expect(result.success).toBe(false);
   });
+
+  it("imports legacy modern template and array tech", () => {
+    const result = validateResumeData({
+      name: "Ada",
+      template: "modern",
+      contact: { email: "a@b.com", phone: "", location: "" },
+      projects: [
+        {
+          title: "Tool",
+          description: "Desc",
+          tech: ["Python", "Spark"],
+          when: "Mar 2024 — Aug 2024",
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.template).toBe("sidebar");
+      expect(result.data.projects[0]?.tech).toBe("Python, Spark");
+      expect(result.data.projects[0]?.start).toBe("Mar 2024");
+      expect(result.data.projects[0]?.end).toBe("Aug 2024");
+    }
+  });
 });
 
 describe("commands + history", () => {

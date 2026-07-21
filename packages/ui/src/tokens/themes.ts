@@ -1,23 +1,37 @@
 export const themes = {
   teal: {
     name: "Teal",
-    primary: "#0f766e",
-    dark: "#115e59",
+    primary: "#14b8a6",
+    dark: "#0f766e",
     light: "#5eead4",
-    surface: "#f0fdfa",
+    surface: "#f0f8f9",
   },
   blue: {
-    name: "Ocean",
-    primary: "#1d4ed8",
-    dark: "#1e3a8a",
+    name: "Professional Blue",
+    primary: "#3b82f6",
+    dark: "#1e40af",
     light: "#93c5fd",
     surface: "#eff6ff",
   },
+  purple: {
+    name: "Creative Purple",
+    primary: "#a855f7",
+    dark: "#7e22ce",
+    light: "#d8b4fe",
+    surface: "#faf5ff",
+  },
+  green: {
+    name: "Nature Green",
+    primary: "#22c55e",
+    dark: "#15803d",
+    light: "#86efac",
+    surface: "#f0fdf4",
+  },
   slate: {
-    name: "Slate",
-    primary: "#334155",
-    dark: "#0f172a",
-    light: "#94a3b8",
+    name: "Classic Gray",
+    primary: "#64748b",
+    dark: "#334155",
+    light: "#cbd5e1",
     surface: "#f8fafc",
   },
   forest: {
@@ -33,6 +47,13 @@ export const themes = {
     dark: "#78350f",
     light: "#fcd34d",
     surface: "#fffbeb",
+  },
+  black: {
+    name: "Executive Black",
+    primary: "#1f2937",
+    dark: "#030712",
+    light: "#6b7280",
+    surface: "#f9fafb",
   },
 } as const;
 

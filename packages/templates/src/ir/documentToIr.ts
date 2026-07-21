@@ -2,31 +2,34 @@ import type { ResumeDocument, TemplateId } from "@resume/core";
 import { ensureSectionOrder } from "@resume/core";
 
 /** Intermediate representation shared by preview, PDF, and DOCX. */
-export type IrInline =
-  | { type: "text"; text: string }
-  | { type: "link"; text: string; href: string };
-
 export type IrBlock =
   | { type: "heading"; level: 1 | 2 | 3; text: string; sectionId?: string }
+  | { type: "accentBar"; sectionId?: string }
   | { type: "paragraph"; text: string; muted?: boolean; sectionId?: string }
   | { type: "bullets"; items: string[]; sectionId?: string }
   | { type: "chips"; items: string[]; sectionId?: string }
-  | { type: "kv"; label: string; value: string; sectionId?: string }
+  | { type: "kv"; label: string; value: string; href?: string; sectionId?: string }
+  | { type: "link"; label: string; href: string; sectionId?: string }
   | { type: "photo"; src: string; sectionId?: string }
   | {
       type: "entry";
       title: string;
       subtitle?: string;
       meta?: string;
+      /** Optional bold subsection titles paired with following bullets */
+      subsections?: { title?: string; bullets: string[] }[];
       body?: string[];
       url?: string;
+      /** Compact single-line style (certs / edu) */
+      compact?: boolean;
       sectionId?: string;
     }
+  | { type: "lineItem"; text: string; muted?: string; sectionId?: string }
   | { type: "spacer"; size: "sm" | "md"; sectionId?: string };
 
 export interface IrColumn {
   id: string;
-  width: number; // fraction 0-1
+  width: number;
   blocks: IrBlock[];
 }
 
@@ -39,7 +42,6 @@ export interface LayoutIr {
   paper: { widthMm: number; heightMm: number };
   themeId: string;
   pages: IrPage[];
-  /** Flat section→blocks map for click-to-focus */
   sectionAnchors: string[];
 }
 
@@ -58,9 +60,10 @@ function visible(doc: ResumeDocument, id: string) {
 
 function dateRange(start?: string, end?: string) {
   if (!start && !end) return "";
-  return [start, end || "Present"].filter(Boolean).join(" – ");
+  return [start, end].filter(Boolean).join(" — ");
 }
 
+/** Classic sidebar: aside = photo/details/links/skills; main = identity + ordered content. */
 function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBlock[] } {
   const aside: IrBlock[] = [];
   const main: IrBlock[] = [];
@@ -70,12 +73,35 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
   }
 
   if (visible(doc, "contact")) {
-    aside.push({ type: "heading", level: 2, text: "Contact", sectionId: "contact" });
-    if (doc.contact.location) aside.push({ type: "kv", label: "Location", value: doc.contact.location, sectionId: "contact" });
-    if (doc.contact.phone) aside.push({ type: "kv", label: "Phone", value: doc.contact.phone, sectionId: "contact" });
-    if (doc.contact.email) aside.push({ type: "kv", label: "Email", value: doc.contact.email, sectionId: "contact" });
-    for (const link of doc.links) {
-      if (link.url) aside.push({ type: "kv", label: link.label || "Link", value: link.url, sectionId: "contact" });
+    aside.push({ type: "heading", level: 2, text: "Details", sectionId: "contact" });
+    if (doc.contact.location) {
+      aside.push({ type: "kv", label: "Location", value: doc.contact.location, sectionId: "contact" });
+    }
+    if (doc.contact.phone) {
+      aside.push({
+        type: "kv",
+        label: "Phone",
+        value: doc.contact.phone,
+        href: `tel:${doc.contact.phone.replace(/[^\d+]/g, "")}`,
+        sectionId: "contact",
+      });
+    }
+    if (doc.contact.email) {
+      aside.push({
+        type: "kv",
+        label: "Email",
+        value: doc.contact.email,
+        href: `mailto:${doc.contact.email}`,
+        sectionId: "contact",
+      });
+    }
+
+    const links = doc.links.filter((l) => l.url && l.label);
+    if (links.length) {
+      aside.push({ type: "heading", level: 2, text: "Links", sectionId: "contact" });
+      for (const link of links) {
+        aside.push({ type: "link", label: link.label, href: link.url, sectionId: "contact" });
+      }
     }
   }
 
@@ -84,46 +110,38 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
     aside.push({ type: "chips", items: doc.skills, sectionId: "skills" });
   }
 
-  if (visible(doc, "languages") && doc.languages.length) {
-    aside.push({ type: "heading", level: 2, text: "Languages", sectionId: "languages" });
-    for (const lang of doc.languages) {
-      aside.push({
-        type: "kv",
-        label: lang.name,
-        value: lang.level,
-        sectionId: "languages",
-      });
+  // Main column header (classic)
+  if (visible(doc, "identity")) {
+    main.push({ type: "heading", level: 1, text: doc.name || "Your Name", sectionId: "identity" });
+    if (doc.headline) {
+      main.push({ type: "paragraph", text: doc.headline, muted: true, sectionId: "identity" });
+    }
+    main.push({ type: "accentBar", sectionId: "identity" });
+    if (doc.summary) {
+      main.push({ type: "heading", level: 2, text: "Profile", sectionId: "identity" });
+      main.push({ type: "paragraph", text: doc.summary, sectionId: "identity" });
     }
   }
 
-  if (visible(doc, "identity")) {
-    if (doc.name) main.push({ type: "heading", level: 1, text: doc.name, sectionId: "identity" });
-    if (doc.headline) main.push({ type: "paragraph", text: doc.headline, muted: true, sectionId: "identity" });
-    if (doc.summary) main.push({ type: "paragraph", text: doc.summary, sectionId: "identity" });
-  }
-
-  const order = ensureSectionOrder(doc).filter(
-    (id) => !["identity", "photo", "contact", "skills", "languages"].includes(id),
-  );
+  const asideOnly = new Set(["identity", "photo", "contact", "skills"]);
+  const order = ensureSectionOrder(doc).filter((id) => !asideOnly.has(id));
 
   for (const sectionId of order) {
     if (!visible(doc, sectionId)) continue;
     switch (sectionId) {
       case "employment":
         if (!doc.jobs.length) break;
-        main.push({ type: "heading", level: 2, text: "Experience", sectionId });
+        main.push({ type: "heading", level: 2, text: "Employment History", sectionId });
         for (const job of doc.jobs) {
-          const body: string[] = [];
-          for (const sec of job.sections) {
-            if (sec.title) body.push(sec.title);
-            body.push(...sec.bullets.filter(Boolean));
-          }
           main.push({
             type: "entry",
             title: job.role,
-            subtitle: [job.company, job.location].filter(Boolean).join(" · "),
+            subtitle: [job.company, job.location].filter(Boolean).join(", "),
             meta: dateRange(job.start, job.end),
-            body,
+            subsections: (job.sections || []).map((s) => ({
+              title: s.title || undefined,
+              bullets: (s.bullets || []).filter((b) => b && b.trim()),
+            })),
             sectionId,
           });
         }
@@ -135,9 +153,11 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
           main.push({
             type: "entry",
             title: p.title,
-            subtitle: p.tech,
             meta: dateRange(p.start, p.end),
-            body: p.description ? [p.description] : [],
+            body: [
+              ...(p.description ? [p.description] : []),
+              ...(p.tech ? [`Tech: ${p.tech}`] : []),
+            ],
             url: p.url || undefined,
             sectionId,
           });
@@ -148,10 +168,9 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
         main.push({ type: "heading", level: 2, text: "Education", sectionId });
         for (const e of doc.edus) {
           main.push({
-            type: "entry",
-            title: e.degree,
-            subtitle: e.school,
-            meta: e.when,
+            type: "lineItem",
+            text: `${e.degree}${e.school ? ` — ${e.school}` : ""}`,
+            muted: e.when ? `(${e.when})` : undefined,
             sectionId,
           });
         }
@@ -161,10 +180,21 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
         main.push({ type: "heading", level: 2, text: "Certifications", sectionId });
         for (const c of doc.certs) {
           main.push({
-            type: "entry",
-            title: c.title,
-            subtitle: c.org,
-            meta: c.when,
+            type: "lineItem",
+            text: `${c.title}${c.org ? ` — ${c.org}` : ""}`,
+            muted: c.when ? `(${c.when})` : undefined,
+            sectionId,
+          });
+        }
+        break;
+      case "languages":
+        if (!doc.languages.length) break;
+        main.push({ type: "heading", level: 2, text: "Languages", sectionId });
+        for (const lang of doc.languages) {
+          main.push({
+            type: "lineItem",
+            text: lang.name,
+            muted: lang.level ? `— ${lang.level}` : undefined,
             sectionId,
           });
         }
@@ -179,19 +209,19 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
             subtitle: p.publisher,
             meta: p.when,
             url: p.url || undefined,
+            compact: true,
             sectionId,
           });
         }
         break;
       case "awards":
         if (!doc.awards.length) break;
-        main.push({ type: "heading", level: 2, text: "Awards", sectionId });
+        main.push({ type: "heading", level: 2, text: "Awards & Honors", sectionId });
         for (const a of doc.awards) {
           main.push({
-            type: "entry",
-            title: a.title,
-            subtitle: a.issuer,
-            meta: a.when,
+            type: "lineItem",
+            text: `${a.title}${a.issuer ? ` — ${a.issuer}` : ""}`,
+            muted: a.when ? `(${a.when})` : undefined,
             sectionId,
           });
         }
@@ -218,45 +248,35 @@ function buildSingleColumn(doc: ResumeDocument, compact: boolean): IrBlock[] {
       ...doc.links.map((l) => l.url).filter(Boolean),
     ].filter(Boolean);
     if (bits.length) {
-      blocks.push({ type: "paragraph", text: bits.join(compact ? " | " : " · "), sectionId: "contact" });
+      blocks.push({
+        type: "paragraph",
+        text: bits.join(compact ? " | " : " · "),
+        sectionId: "contact",
+      });
     }
   }
   if (visible(doc, "identity") && doc.summary) {
+    blocks.push({ type: "heading", level: 2, text: "Profile", sectionId: "identity" });
     blocks.push({ type: "paragraph", text: doc.summary, sectionId: "identity" });
   }
   if (visible(doc, "skills") && doc.skills.length) {
     blocks.push({ type: "heading", level: 2, text: "Skills", sectionId: "skills" });
-    blocks.push({
-      type: compact ? "paragraph" : "chips",
-      ...(compact
-        ? { text: doc.skills.join(", "), sectionId: "skills" }
-        : { items: doc.skills, sectionId: "skills" }),
-    } as IrBlock);
+    blocks.push(
+      compact
+        ? { type: "paragraph", text: doc.skills.join(", "), sectionId: "skills" }
+        : { type: "chips", items: doc.skills, sectionId: "skills" },
+    );
   }
 
   const { main } = buildSidebarBlocks(doc);
-  // reuse main content blocks after identity/skills already handled
-  const skip = new Set(["identity"]);
   for (const block of main) {
     if (block.type === "heading" && block.level === 1) continue;
-    if (block.type === "paragraph" && block.sectionId === "identity" && block.muted) continue;
-    if (block.sectionId && skip.has(block.sectionId) && block.type === "paragraph" && !block.muted) {
-      // summary already added
-      if (block.text === doc.summary) continue;
-    }
-    if (block.sectionId === "identity" && block.type === "paragraph" && block.text === doc.summary) continue;
+    if (block.type === "accentBar") continue;
+    if (block.type === "paragraph" && block.muted && block.sectionId === "identity") continue;
+    if (block.type === "heading" && block.text === "Profile") continue;
+    if (block.type === "paragraph" && block.sectionId === "identity" && block.text === doc.summary) continue;
     blocks.push(block);
   }
-
-  if (visible(doc, "languages") && doc.languages.length) {
-    blocks.push({ type: "heading", level: 2, text: "Languages", sectionId: "languages" });
-    blocks.push({
-      type: "paragraph",
-      text: doc.languages.map((l) => `${l.name}${l.level ? ` (${l.level})` : ""}`).join(", "),
-      sectionId: "languages",
-    });
-  }
-
   return blocks;
 }
 
@@ -295,20 +315,20 @@ export function documentToIr(doc: ResumeDocument): LayoutIr {
 
 export const TEMPLATES: TemplateManifest[] = [
   {
+    id: "sidebar",
+    name: "Classic Sidebar",
+    description: "Two-column professional layout — the original Resume Builder look.",
+    atsFriendly: false,
+    supportsPhoto: true,
+    previewAccent: "#14b8a6",
+  },
+  {
     id: "ats",
     name: "ATS Single Column",
     description: "Clean single-column layout optimized for applicant tracking systems.",
     atsFriendly: true,
     supportsPhoto: false,
     previewAccent: "#334155",
-  },
-  {
-    id: "sidebar",
-    name: "Classic Sidebar",
-    description: "Two-column professional layout with a tinted sidebar for contact and skills.",
-    atsFriendly: false,
-    supportsPhoto: true,
-    previewAccent: "#0f766e",
   },
   {
     id: "compact",
@@ -321,5 +341,5 @@ export const TEMPLATES: TemplateManifest[] = [
 ];
 
 export function getTemplate(id: TemplateId): TemplateManifest {
-  return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[1]!;
+  return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0]!;
 }
