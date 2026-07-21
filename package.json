@@ -1,59 +1,17 @@
 {
   "name": "resume-builder",
-  "version": "1.1.0",
-  "description": "Client-side résumé editor: live preview, JSON backup, PDF and DOCX export. No account required.",
-  "homepage": "https://Arudchayan.github.io/ResumeBuilder/",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Arudchayan/ResumeBuilder.git"
-  },
+  "version": "2.0.0",
+  "private": true,
+  "description": "State-of-the-art local-first Resume Builder (monorepo)",
   "type": "module",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "test:e2e": "playwright test"
-  },
-  "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
-    "docx": "^9.5.1",
-    "dompurify": "^3.2.7",
-    "file-saver": "^2.0.5",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.1",
-    "lucide-react": "^0.344.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "sonner": "^2.0.7",
-    "use-undo": "^1.1.1",
-    "zod": "^4.1.12"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.49.1",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react": "^7.34.1",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.6",
-    "jsdom": "^27.2.0",
-    "postcss": "^8.4.38",
-    "prop-types": "^15.8.1",
-    "tailwindcss": "^3.4.3",
-    "vite": "^5.2.11",
-    "vitest": "^4.0.10"
+    "dev": "pnpm --filter @resume/web dev",
+    "build": "pnpm --filter @resume/core build && pnpm --filter @resume/ports build && pnpm --filter @resume/ui build && pnpm --filter @resume/storage build && pnpm --filter @resume/templates build && pnpm --filter @resume/export build && pnpm --filter @resume/web build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @resume/web test:e2e",
+    "typecheck": "pnpm --filter @resume/core build && pnpm --filter @resume/ports build && pnpm --filter @resume/ui build && pnpm --filter @resume/storage build && pnpm --filter @resume/templates build && pnpm --filter @resume/export build && pnpm --filter @resume/web typecheck"
   },
   "keywords": [
     "resume",
@@ -61,8 +19,10 @@
     "builder",
     "pdf",
     "react",
-    "tailwind"
+    "typescript"
   ],
-  "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
 }
