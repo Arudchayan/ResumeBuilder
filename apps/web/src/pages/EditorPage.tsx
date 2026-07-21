@@ -178,10 +178,10 @@ export function EditorPage() {
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-3">
           <button
             type="button"
-            className="font-display text-xl text-slate-900"
+            className="text-lg font-bold text-slate-900"
             onClick={() => setScreen("gallery")}
           >
-            Resume Forge
+            Resume Builder
           </button>
           <span className="hidden text-sm text-slate-500 sm:inline">
             {doc.name || "Untitled"} · {TEMPLATES.find((t) => t.id === doc.template)?.name}

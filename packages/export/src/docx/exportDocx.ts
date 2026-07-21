@@ -24,13 +24,15 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
           }),
         );
         break;
+      case "accentBar":
+        break;
       case "paragraph":
         out.push(
           new Paragraph({
             children: [
               new TextRun({
                 text: block.text,
-                italics: Boolean(block.muted),
+                bold: Boolean(block.muted),
                 size: block.muted ? 22 : 20,
               }),
             ],
@@ -48,12 +50,7 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
         break;
       case "bullets":
         for (const item of block.items) {
-          out.push(
-            new Paragraph({
-              text: item,
-              bullet: { level: 0 },
-            }),
-          );
+          out.push(new Paragraph({ text: item, bullet: { level: 0 } }));
         }
         break;
       case "kv":
@@ -66,8 +63,31 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
           }),
         );
         break;
+      case "link":
+        out.push(
+          new Paragraph({
+            children: [
+              new ExternalHyperlink({
+                children: [new TextRun({ text: block.label, style: "Hyperlink", size: 18 })],
+                link: block.href,
+              }),
+            ],
+          }),
+        );
+        break;
       case "photo":
-        // Photos omitted in DOCX for portability; section still represented by surrounding content
+        break;
+      case "lineItem":
+        out.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: block.text, bold: true, size: 19 }),
+              block.muted
+                ? new TextRun({ text: ` ${block.muted}`, size: 18, color: "64748B" })
+                : new TextRun({ text: "" }),
+            ],
+          }),
+        );
         break;
       case "entry": {
         out.push(
@@ -84,7 +104,7 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
         if (block.subtitle) {
           out.push(
             new Paragraph({
-              children: [new TextRun({ text: block.subtitle, italics: true, size: 18 })],
+              children: [new TextRun({ text: block.subtitle, bold: true, size: 18, color: "64748B" })],
             }),
           );
         }
@@ -100,8 +120,20 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
             }),
           );
         }
+        for (const sec of block.subsections ?? []) {
+          if (sec.title) {
+            out.push(
+              new Paragraph({
+                children: [new TextRun({ text: sec.title, bold: true, size: 19 })],
+              }),
+            );
+          }
+          for (const line of sec.bullets) {
+            out.push(new Paragraph({ text: line, bullet: { level: 0 } }));
+          }
+        }
         for (const line of block.body ?? []) {
-          out.push(new Paragraph({ text: line, bullet: { level: 0 } }));
+          out.push(new Paragraph({ children: [new TextRun({ text: line, size: 19 })] }));
         }
         break;
       }
@@ -126,12 +158,11 @@ export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
   if (ir.templateId === "sidebar") {
     const aside = page.columns.find((c) => c.id === "aside");
     const main = page.columns.find((c) => c.id === "main");
-    // DOCX is inherently linear; emit main then aside labeled sections for parity of content
     if (main) paragraphs.push(...blocksToParagraphs(main.blocks));
     if (aside) {
       paragraphs.push(
         new Paragraph({
-          text: "Sidebar",
+          text: "Details & Skills",
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 300 },
         }),

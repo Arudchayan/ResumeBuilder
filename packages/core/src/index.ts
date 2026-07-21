@@ -2,6 +2,7 @@ export {
   resumeSchema,
   validateResumeData,
   parseResumeData,
+  normalizeTemplateId,
   TEMPLATE_IDS,
   type ResumeDocument,
   type TemplateId,

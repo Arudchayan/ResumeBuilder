@@ -74,14 +74,45 @@ export const certSchema = z.object({
   when: z.string().trim().max(100).optional().default(""),
 });
 
-export const projectSchema = z.object({
-  title: z.string().trim().max(200).optional().default(""),
-  description: z.string().trim().max(1000).optional().default(""),
-  tech: z.string().trim().max(300).optional().default(""),
-  start: z.string().trim().max(100).optional().default(""),
-  end: z.string().trim().max(100).optional().default(""),
-  url: httpUrlField(),
-});
+/** Accept string or string[] (legacy exports used arrays). */
+const techField = z.preprocess((val) => {
+  if (Array.isArray(val)) return val.filter((x) => typeof x === "string").join(", ");
+  if (val == null) return "";
+  return val;
+}, z.string().trim().max(300).optional().default(""));
+
+export const projectSchema = z
+  .object({
+    title: z.string().trim().max(200).optional().default(""),
+    description: z.string().trim().max(1000).optional().default(""),
+    tech: techField,
+    start: z.string().trim().max(100).optional().default(""),
+    end: z.string().trim().max(100).optional().default(""),
+    when: z.string().trim().max(100).optional(),
+    url: httpUrlField(),
+  })
+  .transform((p) => {
+    // Legacy projects used `when` instead of start/end
+    if ((!p.start && !p.end) && p.when) {
+      const parts = p.when.split(/\s*[—–-]\s*/);
+      return {
+        title: p.title,
+        description: p.description,
+        tech: p.tech,
+        start: parts[0]?.trim() ?? "",
+        end: parts[1]?.trim() ?? "",
+        url: p.url,
+      };
+    }
+    return {
+      title: p.title,
+      description: p.description,
+      tech: p.tech,
+      start: p.start,
+      end: p.end,
+      url: p.url,
+    };
+  });
 
 export const languageSchema = z.object({
   name: z.string().trim().max(100).optional().default(""),
@@ -104,43 +135,61 @@ export const awardSchema = z.object({
 export const TEMPLATE_IDS = ["ats", "sidebar", "compact"] as const;
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
 
-export const resumeSchema = z.object({
-  id: z.string().optional().default(""),
-  name: z.string().trim().max(200).optional().default(""),
-  headline: z.string().trim().max(200).optional().default(""),
-  summary: z.string().trim().max(2000).optional().default(""),
-  contact: z
-    .object({
-      location: z.string().trim().max(200).optional().default(""),
-      phone: phoneField(),
-      email: emailField(),
-    })
-    .optional()
-    .default({ location: "", phone: "", email: "" }),
-  links: z.array(linkSchema).optional().default([]),
-  skills: z.array(z.string().trim().max(100)).optional().default([]),
-  jobs: z.array(jobSchema).optional().default([]),
-  projects: z.array(projectSchema).optional().default([]),
-  certs: z.array(certSchema).optional().default([]),
-  edus: z.array(educationSchema).optional().default([]),
-  languages: z.array(languageSchema).optional().default([]),
-  publications: z.array(publicationSchema).optional().default([]),
-  awards: z.array(awardSchema).optional().default([]),
-  photo: z
-    .object({
-      enabled: z.boolean().optional().default(false),
-      url: httpUrlField(2000),
-      dataUrl: z.string().optional().default(""),
-    })
-    .optional()
-    .default({ enabled: false, url: "", dataUrl: "" }),
-  sectionVisibility: z.record(z.string(), z.boolean()).optional().default({}),
-  sectionOrder: z.array(z.string()).nullable().optional().default(null),
-  theme: z.string().optional().default("teal"),
-  template: z.enum(TEMPLATE_IDS).optional().default("sidebar"),
-  customSections: z.array(z.unknown()).optional().default([]),
-  updatedAt: z.number().optional().default(0),
-});
+/** Map legacy template ids (e.g. "modern") onto current ones. */
+export function normalizeTemplateId(raw: unknown): TemplateId {
+  if (typeof raw === "string" && (TEMPLATE_IDS as readonly string[]).includes(raw)) {
+    return raw as TemplateId;
+  }
+  if (raw === "modern" || raw === "classic" || raw === "default") return "sidebar";
+  return "sidebar";
+}
+
+export const resumeSchema = z.preprocess(
+  (input) => {
+    if (!input || typeof input !== "object") return input;
+    const data = { ...(input as Record<string, unknown>) };
+    data.template = normalizeTemplateId(data.template);
+    if (!data.id) data.id = "";
+    return data;
+  },
+  z.object({
+    id: z.string().optional().default(""),
+    name: z.string().trim().max(200).optional().default(""),
+    headline: z.string().trim().max(200).optional().default(""),
+    summary: z.string().trim().max(2000).optional().default(""),
+    contact: z
+      .object({
+        location: z.string().trim().max(200).optional().default(""),
+        phone: phoneField(),
+        email: emailField(),
+      })
+      .optional()
+      .default({ location: "", phone: "", email: "" }),
+    links: z.array(linkSchema).optional().default([]),
+    skills: z.array(z.string().trim().max(100)).optional().default([]),
+    jobs: z.array(jobSchema).optional().default([]),
+    projects: z.array(projectSchema).optional().default([]),
+    certs: z.array(certSchema).optional().default([]),
+    edus: z.array(educationSchema).optional().default([]),
+    languages: z.array(languageSchema).optional().default([]),
+    publications: z.array(publicationSchema).optional().default([]),
+    awards: z.array(awardSchema).optional().default([]),
+    photo: z
+      .object({
+        enabled: z.boolean().optional().default(false),
+        url: httpUrlField(2000),
+        dataUrl: z.string().optional().default(""),
+      })
+      .optional()
+      .default({ enabled: false, url: "", dataUrl: "" }),
+    sectionVisibility: z.record(z.string(), z.boolean()).optional().default({}),
+    sectionOrder: z.array(z.string()).nullable().optional().default(null),
+    theme: z.string().optional().default("teal"),
+    template: z.enum(TEMPLATE_IDS).optional().default("sidebar"),
+    customSections: z.array(z.unknown()).optional().default([]),
+    updatedAt: z.number().optional().default(0),
+  }),
+);
 
 export type ResumeDocument = z.infer<typeof resumeSchema>;
 export type Job = z.infer<typeof jobSchema>;

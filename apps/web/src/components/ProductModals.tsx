@@ -10,10 +10,10 @@ export function ProductModals() {
     <>
       <Dialog open={modal === "about"} title="About Resume Forge" onClose={close}>
         <p>
-          Resume Forge is a local-first resume builder. Edit with a live preview, then export vector PDF or
-          DOCX from the same layout model.
+          Resume Builder is a local-first resume editor with live preview and PDF/DOCX export.
+          Your files stay in this browser unless you export them.
         </p>
-        <p className="mt-3">Version 2.0 — monorepo rewrite with templates, IndexedDB, and SaaS-ready ports.</p>
+        <p className="mt-3">Version 2.0 — classic sidebar layout restored for compatibility with prior exports.</p>
         <div className="mt-4">
           <Button onClick={close}>Close</Button>
         </div>
