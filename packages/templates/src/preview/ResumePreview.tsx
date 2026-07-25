@@ -3,6 +3,7 @@ import type { ResumeDocument } from "@resume/core";
 import type { LayoutIr, IrBlock } from "../ir/documentToIr.js";
 import { themeCssVars } from "@resume/ui";
 import { ClassicSidebarSheet } from "./ClassicSidebarSheet.js";
+import { PageBreakGuides } from "./PageBreakGuides.js";
 
 function BlockView({
   block,
@@ -155,6 +156,8 @@ export function ResumePreview({
   fontScale = 100,
   onSectionClick,
   className = "",
+  pageCount = 1,
+  showPageGuides = true,
 }: {
   doc?: ResumeDocument;
   ir: LayoutIr;
@@ -163,6 +166,8 @@ export function ResumePreview({
   fontScale?: number;
   onSectionClick?: (sectionId: string) => void;
   className?: string;
+  pageCount?: number;
+  showPageGuides?: boolean;
 }) {
   // Classic sidebar: use the faithful DOM layout (matches the old builder / PDF look)
   if (ir.templateId === "sidebar" && doc) {
@@ -176,6 +181,8 @@ export function ResumePreview({
           contentPadding={contentPadding}
           fontScale={fontScale}
           onSectionClick={onSectionClick}
+          pageCount={pageCount}
+          showPageGuides={showPageGuides}
         />
       </div>
     );
@@ -184,28 +191,43 @@ export function ResumePreview({
   const page = ir.pages[0];
   if (!page) return null;
   const vars = themeCssVars(ir.themeId) as CSSProperties;
-  const widthPx = (ir.paper.widthMm / 25.4) * 96;
-  const minHeightPx = (ir.paper.heightMm / 25.4) * 96;
   const compact = ir.templateId === "compact";
 
   return (
     <div
       className={`origin-top-left ${className}`}
-      style={{ ...vars, transform: `scale(${zoom})`, width: widthPx }}
+      style={{
+        ...vars,
+        transform: `scale(${zoom})`,
+        width: `calc(${ir.paper.widthMm}mm * ${zoom})`,
+      }}
       data-template={ir.templateId}
     >
       <div
-        className="sheet flex flex-col bg-white p-8 text-slate-900 shadow-lg"
-        style={{ width: widthPx, minHeight: minHeightPx }}
+        className="sheet relative flex flex-col bg-white p-8 text-slate-900 shadow-lg"
+        data-page-count={pageCount}
+        style={{
+          width: `${ir.paper.widthMm}mm`,
+          minHeight: `${ir.paper.heightMm}mm`,
+          fontSize: `${fontScale}%`,
+        }}
       >
-        {page.columns[0]?.blocks.map((block, idx) => (
-          <BlockView
-            key={`main-${idx}-${block.type}`}
-            block={block}
-            onSectionClick={onSectionClick}
-            compact={compact}
-          />
-        ))}
+        <PageBreakGuides
+          pages={pageCount}
+          pageHeightMm={ir.paper.heightMm}
+          pageWidthMm={ir.paper.widthMm}
+          visible={showPageGuides}
+        />
+        <div className="relative z-[1]">
+          {page.columns[0]?.blocks.map((block, idx) => (
+            <BlockView
+              key={`main-${idx}-${block.type}`}
+              block={block}
+              onSectionClick={onSectionClick}
+              compact={compact}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

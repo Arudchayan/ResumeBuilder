@@ -1,0 +1,260 @@
+{
+  "name": "Arudchayan Pirabaharan",
+  "headline": "Data Research Engineer | Scalable Data Pipelines | Python, Spark & Data Quality",
+  "summary": "Data research and senior data engineer with 4+ years across industry and independent work building scalable data pipelines, automated processing workflows, and reproducible analytical datasets. Strong in Python, SQL, PySpark, Apache Spark, preprocessing, validation, statistical analysis, and visualization. Experience with multi-source geospatial, financial, ERP, operational, structured, and unstructured enterprise data across Azure, GCP, Databricks, Microsoft Fabric, and Azure Synapse. Applied AI researcher and incoming MSc Data Science student at the University of Basel.",
+  "contact": {
+    "location": "Colombo, Sri Lanka",
+    "phone": "+94 71 209 9432",
+    "email": "arudchayan01@gmail.com"
+  },
+  "links": [
+    {
+      "label": "LinkedIn",
+      "url": "https://www.linkedin.com/in/arudchayan-pirabaharan-1b9002216/"
+    }
+  ],
+  "skills": [
+    "Python",
+    "SQL",
+    "T-SQL",
+    "PySpark",
+    "Apache Spark",
+    "Data Acquisition",
+    "Exploratory Data Analysis",
+    "Statistical Analysis",
+    "Data Cleaning & Preprocessing",
+    "Dataset Quality Assessment",
+    "Data Validation",
+    "Data Visualization",
+    "ETL / ELT",
+    "Reproducible Data Pipelines",
+    "API Integration",
+    "DataOps",
+    "CI/CD",
+    "Pipeline Monitoring",
+    "Databricks",
+    "Microsoft Fabric",
+    "Azure Synapse Analytics",
+    "Azure Data Factory",
+    "Azure OpenAI",
+    "Vector Databases",
+    "NoSQL",
+    "Power BI",
+    "Azure",
+    "GCP",
+    "OCI"
+  ],
+  "jobs": [
+    {
+      "role": "Senior Data Engineer",
+      "company": "Nimbus",
+      "location": "Remote / London Area, United Kingdom",
+      "start": "Jun 2026",
+      "end": "Present",
+      "sections": [
+        {
+          "title": "Property Data Platform",
+          "bullets": [
+            "Lead Spark-based data workflows for a property-data platform, integrating and validating multi-source property and geospatial data for reliable analytical use.",
+            "Drive data-quality, processing-efficiency, and architectural improvements across cloud-native workflows while supporting the platform's continued evolution on GCP."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Data Engineer",
+      "company": "Nimbus",
+      "location": "Remote / London Area, United Kingdom",
+      "start": "Feb 2025",
+      "end": "May 2026",
+      "sections": [
+        {
+          "title": "Property Data Platform",
+          "bullets": [
+            "Engineered Spark-based workflows that ingested, transformed, and validated multi-source property and geospatial data into reliable downstream datasets.",
+            "Optimized geospatial Spark jobs to improve data quality and processing speed, translating recurring data issues into platform improvements.",
+            "Delivered a Microsoft Fabric proof of concept integrating geospatial tools and data; contributed to platform V2 architecture and the Azure-to-GCP migration while preserving continuity and functionality."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Researcher",
+      "company": "BrAIN Labs",
+      "location": "Colombo, Sri Lanka",
+      "start": "Oct 2024",
+      "end": "Present",
+      "sections": [
+        {
+          "title": "Applied Data and AI Research",
+          "bullets": [
+            "Conduct applied data and AI research in healthcare through technical investigation and experimentation, translating emerging methods into practical, real-world use cases.",
+            "Design and run dataset ablation experiments to evaluate how data selection, preprocessing, and composition affect model performance and behavior.",
+            "Use Python, Pandas, NumPy, statistics, exploratory analysis, and visualizations to assess dataset quality, compare experiments, and communicate technical findings."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Data & AI Engineer",
+      "company": "Creative Software",
+      "location": "Colombo, Sri Lanka",
+      "start": "Feb 2024",
+      "end": "Jan 2025",
+      "sections": [
+        {
+          "title": "Data Platforms and Applied Analytics",
+          "bullets": [
+            "Designed and implemented reproducible ELT workflows for financial, ERP, and operational datasets used in analysis and reporting.",
+            "Built PySpark and SQL transformations in Azure Synapse and Databricks to clean, preprocess, and structure data into analytical lakehouse datasets.",
+            "Automated data extraction, orchestration, monitoring, and deployment using PowerShell, Azure Functions, Synapse Pipelines, and Azure DevOps CI/CD.",
+            "Developed Power BI datasets and dashboards with emphasis on data quality, consistency, and repeatability.",
+            "Contributed to a generative-AI data platform for ingesting and analysing structured and unstructured enterprise data using Azure OpenAI, vector search, APIs, and cloud services."
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Cloud Data Engineer Intern",
+      "company": "Creative Software",
+      "location": "Colombo, Sri Lanka",
+      "start": "Dec 2022",
+      "end": "Jan 2024",
+      "sections": [
+        {
+          "title": "Cloud Data Engineering and Analytics",
+          "bullets": [
+            "Supported production data and AI projects spanning ingestion, transformation, cloud analytics, and reporting using Python, SQL, Spark, and Azure data services."
+          ]
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "title": "Real-time Data Pipeline Optimization Tool",
+      "when": "Mar 2024 — Aug 2024",
+      "description": "Built a lightweight Python monitoring and visualization tool for Databricks pipelines that automated bottleneck detection and generated recommendations to improve data-processing reliability and efficiency.",
+      "tech": [
+        "Python",
+        "Databricks",
+        "Apache Spark",
+        "Power BI"
+      ]
+    }
+  ],
+  "certs": [
+    {
+      "title": "Microsoft Certified: Azure AI Engineer Associate",
+      "org": "Microsoft",
+      "when": "Jun 2025"
+    },
+    {
+      "title": "Oracle AI Vector Search Certified Professional",
+      "org": "Oracle",
+      "when": "Mar 2025"
+    },
+    {
+      "title": "Microsoft Certified: Fabric Data Engineer Associate",
+      "org": "Microsoft",
+      "when": "Sep 2024"
+    },
+    {
+      "title": "Oracle Cloud Infrastructure 2024 Generative AI Certified Professional",
+      "org": "Oracle",
+      "when": "Jul 2024"
+    },
+    {
+      "title": "AI/ML in Precision Medicine",
+      "org": "Stanford University School of Medicine",
+      "when": "May 2024"
+    },
+    {
+      "title": "Data Science in Precision Medicine and Cloud Computing",
+      "org": "Stanford University School of Medicine",
+      "when": "May 2024"
+    },
+    {
+      "title": "Microsoft Certified: Azure Data Engineer Associate",
+      "org": "Microsoft",
+      "when": "Mar 2023"
+    },
+    {
+      "title": "Microsoft Certified: Azure Data Fundamentals",
+      "org": "Microsoft",
+      "when": "Dec 2022"
+    },
+    {
+      "title": "Microsoft Certified: Azure Fundamentals",
+      "org": "Microsoft",
+      "when": "Dec 2022"
+    }
+  ],
+  "edus": [
+    {
+      "degree": "MSc Data Science (Incoming Student)",
+      "school": "University of Basel",
+      "when": "2026 —"
+    },
+    {
+      "degree": "BSc (Hons) Information Technology (Data Science)",
+      "school": "Sri Lanka Institute of Information Technology, Colombo",
+      "when": "Jun 2021 — Jun 2025"
+    },
+    {
+      "degree": "Professional Graduate Diploma — HEQ",
+      "school": "British Computer Society (BCS), UK",
+      "when": "2018 — 2021"
+    }
+  ],
+  "languages": [
+    {
+      "name": "English",
+      "level": "Fluent"
+    },
+    {
+      "name": "Tamil",
+      "level": "Native"
+    },
+    {
+      "name": "Sinhala",
+      "level": "Intermediate"
+    }
+  ],
+  "publications": [],
+  "awards": [],
+  "photo": {
+    "enabled": false,
+    "url": "",
+    "dataUrl": ""
+  },
+  "sectionVisibility": {
+    "identity": true,
+    "photo": false,
+    "contact": true,
+    "skills": true,
+    "employment": true,
+    "projects": true,
+    "certs": true,
+    "edus": true,
+    "languages": true,
+    "publications": false,
+    "awards": false
+  },
+  "sectionOrder": [
+    "identity",
+    "photo",
+    "contact",
+    "edus",
+    "skills",
+    "employment",
+    "projects",
+    "certs",
+    "languages",
+    "publications",
+    "awards"
+  ],
+  "theme": "teal",
+  "template": "modern",
+  "customSections": []
+}

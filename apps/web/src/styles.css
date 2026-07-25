@@ -491,8 +491,98 @@ textarea:focus-visible {
 }
 
 .sheet {
+  position: relative;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+
+.page-metrics-bar {
+  display: grid;
+  gap: 0.35rem;
+  border-bottom: 1px solid rgba(210, 226, 222, 0.95);
+  background: color-mix(in srgb, var(--theme-primary) 7%, white);
+  padding: 0.65rem 1rem;
+}
+
+.page-metrics-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  color: var(--workspace-ink);
+  font-size: 0.78rem;
+}
+
+.page-metrics-main strong {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.page-metrics-detail {
+  color: var(--workspace-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.page-metrics-hint {
+  margin: 0;
+  color: var(--theme-dark);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.page-band {
+  position: absolute;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  box-sizing: border-box;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-dark) 18%, transparent);
+  background: transparent;
+}
+
+.page-band.is-alt {
+  background: color-mix(in srgb, var(--theme-primary) 4%, transparent);
+}
+
+.page-break-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  pointer-events: none;
+  border-top: 2px dashed color-mix(in srgb, var(--theme-dark) 72%, #b45309);
+}
+
+.page-break-label {
+  position: absolute;
+  top: -0.85rem;
+  right: 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--theme-dark) 92%, black);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.28rem 0.55rem;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+  white-space: nowrap;
+}
+
+.page-number-badge {
+  position: absolute;
+  left: 0.45rem;
+  z-index: 20;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--theme-dark) 35%, white);
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--theme-dark);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 0.22rem 0.4rem;
 }
 
 .section-editor {
@@ -880,6 +970,13 @@ textarea:focus-visible {
 
   .preview-stage .sheet {
     box-shadow: none !important;
+  }
+
+  .page-break-indicator,
+  .page-number-badge,
+  .page-band,
+  .page-metrics-bar {
+    display: none !important;
   }
 }
 

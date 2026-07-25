@@ -129,8 +129,12 @@ function stylePageClone(
     if (!options.clip) grid.style.height = "auto";
   }
 
-  page.querySelector(".page-break-indicator")?.remove();
+  page
+    .querySelectorAll(".page-break-indicator, .page-number-badge, .page-band")
+    .forEach((node) => node.remove());
 }
+
+
 
 /**
  * Classic sidebar PDF: capture the live `.sheet` DOM so preview and PDF match.

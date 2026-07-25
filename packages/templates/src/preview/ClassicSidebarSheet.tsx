@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { ResumeDocument } from "@resume/core";
 import { ensureSectionOrder } from "@resume/core";
 import { themeCssVars } from "@resume/ui";
+import { PageBreakGuides } from "./PageBreakGuides.js";
 
 function visible(doc: ResumeDocument, id: string) {
   return doc.sectionVisibility?.[id] !== false;
@@ -63,12 +64,16 @@ export function ClassicSidebarSheet({
   fontScale = 100,
   onSectionClick,
   className = "",
+  pageCount = 1,
+  showPageGuides = true,
 }: {
   doc: ResumeDocument;
   contentPadding?: number;
   fontScale?: number;
   onSectionClick?: (sectionId: string) => void;
   className?: string;
+  pageCount?: number;
+  showPageGuides?: boolean;
 }) {
   const vars = themeCssVars(doc.theme) as CSSProperties;
   const photoSrc = doc.photo?.enabled ? doc.photo.dataUrl || doc.photo.url : "";
@@ -238,8 +243,9 @@ export function ClassicSidebarSheet({
 
   return (
     <div
-      className={`sheet border bg-white shadow-lg ${className}`}
+      className={`sheet relative border bg-white shadow-lg ${className}`}
       data-template="sidebar"
+      data-page-count={pageCount}
       style={{
         ...vars,
         width: "210mm",
@@ -248,7 +254,11 @@ export function ClassicSidebarSheet({
         fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       }}
     >
-      <div className="grid" style={{ gridTemplateColumns: "30% 1fr", minHeight: "297mm" }}>
+      <PageBreakGuides pages={pageCount} visible={showPageGuides} />
+      <div
+        className="relative z-[1] grid"
+        style={{ gridTemplateColumns: "30% 1fr", minHeight: "297mm" }}
+      >
         <aside
           className="border-r"
           style={{

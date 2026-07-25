@@ -17,7 +17,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SECTION_CONFIG, ensureSectionOrder, type ResumeDocument } from "@resume/core";
-import { documentToIr, ResumePreview, TEMPLATES } from "@resume/templates";
+import {
+  A4_PAPER,
+  documentToIr,
+  measureSheetPages,
+  ResumePreview,
+  TEMPLATES,
+  type SheetPageMetrics,
+} from "@resume/templates";
 import { Button, themeCssVars } from "@resume/ui";
 import {
   Check,
@@ -34,6 +41,7 @@ import {
   Printer,
   Redo2,
   RotateCcw,
+  Ruler,
   Undo2,
   ZoomIn,
   ZoomOut,
@@ -133,6 +141,14 @@ export function EditorPage() {
   const [contentPadding, setContentPadding] = useState(48);
   const [fontScale, setFontScale] = useState(100);
   const [previewMode, setPreviewMode] = useState<"fit" | "inspect">("fit");
+  const [showPageGuides, setShowPageGuides] = useState(true);
+  const [pageMetrics, setPageMetrics] = useState<SheetPageMetrics>({
+    pages: 1,
+    heightMm: A4_PAPER.heightMm,
+    widthMm: A4_PAPER.widthMm,
+    overflowMm: 0,
+    fillsFirstPage: 1,
+  });
   const previewHostRef = useRef<HTMLDivElement>(null);
 
   const order = ensureSectionOrder(doc);
@@ -140,6 +156,10 @@ export function EditorPage() {
   const cssVars = themeCssVars(doc.theme);
   const activeMeta = SECTION_CONFIG.find((section) => section.id === activeSection);
   const visibleCount = order.filter((id) => doc.sectionVisibility?.[id] !== false).length;
+  const pageSummary =
+    pageMetrics.pages === 1
+      ? `Exports as 1 × ${A4_PAPER.name} page`
+      : `Exports as ${pageMetrics.pages} × ${A4_PAPER.name} pages`;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -161,6 +181,28 @@ export function EditorPage() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [previewMode]);
+
+  useEffect(() => {
+    const host = previewHostRef.current;
+    if (!host) return;
+
+    const updateMetrics = () => {
+      const sheet = host.querySelector<HTMLElement>(".sheet");
+      if (!sheet) return;
+      setPageMetrics(measureSheetPages(sheet, ir.paper));
+    };
+
+    updateMetrics();
+    const observer = new ResizeObserver(() => updateMetrics());
+    const sheet = host.querySelector<HTMLElement>(".sheet");
+    if (sheet) observer.observe(sheet);
+    observer.observe(host);
+    window.addEventListener("resize", updateMetrics);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateMetrics);
+    };
+  }, [doc, ir.paper, contentPadding, fontScale, zoom, mobilePane, previewMode]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -207,7 +249,11 @@ export function EditorPage() {
       } else {
         await downloadDocx(doc, `${filename}.docx`);
       }
-      toast.success(kind === "pdf" ? "PDF downloaded" : "DOCX downloaded");
+      toast.success(
+        kind === "pdf"
+          ? `PDF downloaded (${pageMetrics.pages} × ${A4_PAPER.name})`
+          : "DOCX downloaded",
+      );
     } catch (error) {
       console.error(error);
       const message = error instanceof Error && error.message ? error.message : "Export failed";
@@ -448,7 +494,29 @@ export function EditorPage() {
                 <p className="eyebrow">Live canvas</p>
                 <h2 className="panel-title">Preview resume</h2>
               </div>
-              <span className="section-state">A4 · {Math.round(zoom * 100)}%</span>
+              <span className="section-state" data-testid="paper-meta">
+                {A4_PAPER.label} · {Math.round(zoom * 100)}%
+              </span>
+            </div>
+            <div className="page-metrics-bar" role="status" aria-live="polite">
+              <div className="page-metrics-main">
+                <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
+                <strong data-testid="page-count-label">{pageSummary}</strong>
+                <span className="page-metrics-detail" data-testid="paper-size-detail">
+                  Paper {A4_PAPER.label}
+                  {" · "}
+                  content ~{Math.round(pageMetrics.heightMm)} mm
+                  {pageMetrics.pages > 1
+                    ? ` · ${Math.round(pageMetrics.overflowMm)} mm past page 1`
+                    : " · fits on one page"}
+                </span>
+              </div>
+              {pageMetrics.pages >= 3 ? (
+                <p className="page-metrics-hint">
+                  Long resume — use Font/Pad controls, hide sections, or trim skills so fewer A4
+                  pages are needed.
+                </p>
+              ) : null}
             </div>
             <div className="preview-toolbar">
               <Button variant="ghost" aria-label="Zoom out" title="Zoom out" onClick={() => { setPreviewMode("inspect"); setZoom(zoom - 0.05); }}>
@@ -477,6 +545,15 @@ export function EditorPage() {
                 }}
               >
                 <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Full size
+              </Button>
+              <Button
+                variant={showPageGuides ? "primary" : "secondary"}
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                aria-pressed={showPageGuides}
+                onClick={() => setShowPageGuides((value) => !value)}
+              >
+                <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
+                {showPageGuides ? "Hide page guides" : "Show page guides"}
               </Button>
               <Button
                 variant="ghost"
@@ -526,6 +603,8 @@ export function EditorPage() {
                 zoom={zoom}
                 contentPadding={contentPadding}
                 fontScale={fontScale}
+                pageCount={pageMetrics.pages}
+                showPageGuides={showPageGuides}
                 onSectionClick={(sectionId) => {
                   setActiveSection(sectionId);
                   setMobilePane("edit");

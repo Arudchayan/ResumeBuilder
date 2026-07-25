@@ -41,6 +41,46 @@ test.describe("PDF export", () => {
     });
   });
 
+  test("sample 2026 resume: page guides + multi-page PDF", async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.goto("./");
+    await page
+      .locator('input[type="file"][accept*="json"]')
+      .setInputFiles(path.join(here, "fixtures/arudchayan-sample-2026.json"));
+    await expect(page.getByLabel("Resume preview")).toContainText("Arudchayan Pirabaharan", {
+      timeout: 10000,
+    });
+    await expect(page.getByLabel("Resume preview")).toContainText("Senior Data Engineer");
+    await expect(page.getByLabel("Resume preview")).toContainText("University of Basel");
+
+    // Legacy template: modern → sidebar
+    await expect(page.locator(".sheet")).toHaveAttribute("data-template", "sidebar");
+
+    await expect(page.getByTestId("paper-meta")).toContainText("A4");
+    await expect(page.getByTestId("page-count-label")).toContainText(/Exports as \d+ × A4 pages?/);
+
+    const pageCountText = await page.getByTestId("page-count-label").innerText();
+    const match = pageCountText.match(/Exports as (\d+)/);
+    expect(match).toBeTruthy();
+    const pages = Number(match![1]);
+    expect(pages).toBeGreaterThanOrEqual(2);
+
+    await expect(page.locator(".page-break-indicator").first()).toBeVisible();
+    await expect(page.locator(".page-number-badge").first()).toContainText("1/");
+
+    const downloadPromise = page.waitForEvent("download", { timeout: 120_000 });
+    await page.getByRole("button", { name: "Export PDF" }).click();
+    const download = await downloadPromise;
+    const pdfPath = path.join(outDir, "sample-2026.pdf");
+    await download.saveAs(pdfPath);
+    const size = fs.statSync(pdfPath).size;
+    expect(size).toBeGreaterThan(40_000);
+
+    await expect(page.locator("[data-sonner-toast]").filter({ hasText: /PDF downloaded/i })).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
   test("mobile edit pane exports PDF while preview is hidden", async ({ page }) => {
     test.setTimeout(180_000);
     await page.setViewportSize({ width: 390, height: 844 });
