@@ -24,7 +24,7 @@
     "@resume/ui": "workspace:*",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
-    "html2canvas": "1.4.1",
+    "html2canvas-pro": "^2.3.1",
     "jspdf": "2.5.2"
   },
   "devDependencies": {

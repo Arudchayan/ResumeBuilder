@@ -3,6 +3,9 @@ import type { ResumeDocument } from "@resume/core";
 import type { LayoutIr, IrBlock } from "../ir/documentToIr.js";
 import { themeCssVars } from "@resume/ui";
 import { ClassicSidebarSheet } from "./ClassicSidebarSheet.js";
+import { PageBreakGuides } from "./PageBreakGuides.js";
+import { PAPER_PRESETS, type PaperId } from "./paper.js";
+import type { SkillsDensity } from "./layoutAssist.js";
 
 function BlockView({
   block,
@@ -27,18 +30,23 @@ function BlockView({
       }
     : {};
 
+  const sectionAttrs = block.sectionId
+    ? { "data-section": block.sectionId, "data-section-label": block.sectionId }
+    : {};
+
   switch (block.type) {
     case "heading":
       if (block.level === 1) {
         return (
-          <h1 className="text-3xl font-extrabold leading-tight text-slate-900" {...clickable}>
+          <h1 className="rb-keep text-3xl font-extrabold leading-tight text-slate-900" {...sectionAttrs} {...clickable}>
             {block.text}
           </h1>
         );
       }
       return (
         <h2
-          className="mb-2 mt-4 text-[12px] font-extrabold uppercase tracking-[0.18em] text-[var(--theme-dark)]"
+          className="rb-keep mb-2 mt-4 text-[12px] font-extrabold uppercase tracking-[0.18em] text-[var(--theme-dark)]"
+          {...sectionAttrs}
           {...clickable}
         >
           {block.text}
@@ -51,9 +59,10 @@ function BlockView({
         <p
           className={
             block.muted
-              ? "mt-1 font-bold text-[var(--theme-dark)]"
-              : `text-[13px] leading-relaxed text-slate-800 ${compact ? "text-[12px]" : ""}`
+              ? "rb-keep mt-1 font-bold text-[var(--theme-dark)]"
+              : `rb-keep text-[13px] leading-relaxed text-slate-800 ${compact ? "text-[12px]" : ""}`
           }
+          {...sectionAttrs}
           {...clickable}
         >
           {block.text}
@@ -61,24 +70,17 @@ function BlockView({
       );
     case "chips":
       return (
-        <div className="mt-1 flex flex-wrap gap-2" {...clickable}>
-          {block.items.map((item) => (
-            <span
-              key={item}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11.5px] text-slate-800"
-            >
-              {item}
-            </span>
-          ))}
+        <div className="rb-section mt-1" {...sectionAttrs} {...clickable}>
+          <p className="skills-compact text-[11px] leading-snug text-slate-800">{block.items.join(" · ")}</p>
         </div>
       );
     case "bullets":
       return (
-        <div className="mt-1" {...clickable}>
+        <div className="mt-1" {...sectionAttrs} {...clickable}>
           {block.items.map((item, i) => (
             <div
               key={`${i}-${item.slice(0, 12)}`}
-              className="my-1 grid gap-2 text-[12.5px]"
+              className="rb-keep my-1 grid gap-2 text-[12.5px]"
               style={{ gridTemplateColumns: "12px 1fr" }}
             >
               <span className="text-[var(--theme-dark)]">•</span>
@@ -89,39 +91,44 @@ function BlockView({
       );
     case "kv":
       return (
-        <div className="my-2 text-[12px] text-slate-800" {...clickable}>
+        <div className="rb-keep my-2 text-[12px] text-slate-800" {...sectionAttrs} {...clickable}>
           <div className="mb-0.5 text-[10px] uppercase tracking-wider text-slate-500">{block.label}</div>
           <div className="break-all leading-relaxed">{block.value}</div>
         </div>
       );
     case "link":
       return (
-        <a href={block.href} className="block text-[12px] font-medium text-[var(--theme-primary)]" {...clickable}>
+        <a
+          href={block.href}
+          className="rb-keep block text-[12px] font-medium text-[var(--theme-primary)]"
+          {...sectionAttrs}
+          {...clickable}
+        >
           {block.label}
         </a>
       );
     case "photo":
-      return <img src={block.src} alt="" className="mb-3 h-24 w-24 rounded-full object-cover" />;
+      return <img src={block.src} alt="" className="rb-keep mb-3 h-24 w-24 rounded-full object-cover" />;
     case "lineItem":
       return (
-        <div className="my-1 text-[12.5px]" {...clickable}>
+        <div className="rb-keep my-1 text-[12.5px]" {...sectionAttrs} {...clickable}>
           <span className="font-semibold">{block.text}</span>{" "}
           {block.muted ? <span className="text-slate-500">{block.muted}</span> : null}
         </div>
       );
     case "entry":
       return (
-        <article className="mb-3" {...clickable}>
+        <article className="rb-entry mb-3" {...sectionAttrs} {...clickable}>
           <div className="text-sm font-bold">{block.title}</div>
           {block.subtitle ? <div className="text-sm font-semibold text-slate-500">{block.subtitle}</div> : null}
           {block.meta ? <div className="text-xs text-slate-500">{block.meta}</div> : null}
           {block.subsections?.map((sec, i) => (
-            <div key={i} className="mt-2">
+            <div key={i} className="rb-keep mt-2">
               {sec.title ? <div className="font-semibold">{sec.title}</div> : null}
               {sec.bullets.map((line, j) => (
                 <div
                   key={j}
-                  className="my-1 grid gap-2 text-[12.5px]"
+                  className="rb-keep my-1 grid gap-2 text-[12.5px]"
                   style={{ gridTemplateColumns: "12px 1fr" }}
                 >
                   <span>•</span>
@@ -155,6 +162,10 @@ export function ResumePreview({
   fontScale = 100,
   onSectionClick,
   className = "",
+  pageCount = 1,
+  showPageGuides = true,
+  paperId = "a4",
+  skillsDensity = "comfortable",
 }: {
   doc?: ResumeDocument;
   ir: LayoutIr;
@@ -163,19 +174,29 @@ export function ResumePreview({
   fontScale?: number;
   onSectionClick?: (sectionId: string) => void;
   className?: string;
+  pageCount?: number;
+  showPageGuides?: boolean;
+  paperId?: PaperId;
+  skillsDensity?: SkillsDensity;
 }) {
+  const paper = PAPER_PRESETS[paperId] ?? PAPER_PRESETS.a4;
+
   // Classic sidebar: use the faithful DOM layout (matches the old builder / PDF look)
   if (ir.templateId === "sidebar" && doc) {
     return (
       <div
         className={`origin-top-left ${className}`}
-        style={{ transform: `scale(${zoom})`, width: `calc(210mm * ${zoom})` }}
+        style={{ transform: `scale(${zoom})`, width: `calc(${paper.widthMm}mm * ${zoom})` }}
       >
         <ClassicSidebarSheet
           doc={doc}
           contentPadding={contentPadding}
           fontScale={fontScale}
           onSectionClick={onSectionClick}
+          pageCount={pageCount}
+          showPageGuides={showPageGuides}
+          paperId={paperId}
+          skillsDensity={skillsDensity}
         />
       </div>
     );
@@ -184,28 +205,48 @@ export function ResumePreview({
   const page = ir.pages[0];
   if (!page) return null;
   const vars = themeCssVars(ir.themeId) as CSSProperties;
-  const widthPx = (ir.paper.widthMm / 25.4) * 96;
-  const minHeightPx = (ir.paper.heightMm / 25.4) * 96;
   const compact = ir.templateId === "compact";
+  const pad = compact ? Math.max(24, contentPadding - 12) : contentPadding;
 
   return (
     <div
       className={`origin-top-left ${className}`}
-      style={{ ...vars, transform: `scale(${zoom})`, width: widthPx }}
+      style={{
+        ...vars,
+        transform: `scale(${zoom})`,
+        width: `calc(${paper.widthMm}mm * ${zoom})`,
+      }}
       data-template={ir.templateId}
     >
       <div
-        className="sheet flex flex-col bg-white p-8 text-slate-900 shadow-lg"
-        style={{ width: widthPx, minHeight: minHeightPx }}
+        className={`sheet relative flex flex-col bg-white text-slate-900 shadow-lg ${
+          compact ? "ats-compact" : "ats-standard"
+        }`}
+        data-page-count={pageCount}
+        data-paper={paper.id}
+        style={{
+          width: `${paper.widthMm}mm`,
+          minHeight: `${paper.heightMm}mm`,
+          fontSize: `${fontScale}%`,
+          padding: `${pad}px`,
+        }}
       >
-        {page.columns[0]?.blocks.map((block, idx) => (
-          <BlockView
-            key={`main-${idx}-${block.type}`}
-            block={block}
-            onSectionClick={onSectionClick}
-            compact={compact}
-          />
-        ))}
+        <PageBreakGuides
+          pages={pageCount}
+          pageHeightMm={paper.heightMm}
+          pageWidthMm={paper.widthMm}
+          visible={showPageGuides}
+        />
+        <div className="relative z-[1]">
+          {page.columns[0]?.blocks.map((block, idx) => (
+            <BlockView
+              key={`main-${idx}-${block.type}`}
+              block={block}
+              onSectionClick={onSectionClick}
+              compact={compact}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
