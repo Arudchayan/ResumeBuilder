@@ -14,12 +14,20 @@ import type { ResumeDocument } from "@resume/core";
 import { documentToIr, type IrBlock } from "@resume/templates";
 import { themes, type ThemeId } from "@resume/ui";
 
+export type PdfProgress = {
+  phase: "prepare" | "capture" | "render";
+  current: number;
+  total: number;
+  message: string;
+};
+
 export type PdfExportOptions = {
   name?: string;
   widthMm?: number;
   heightMm?: number;
   fontScale?: number;
   contentPadding?: number;
+  onProgress?: (progress: PdfProgress) => void;
 };
 
 export type ThemeColorSet = {
@@ -97,36 +105,35 @@ function applyThemeColors(element: HTMLElement, themeColors: ThemeColorSet) {
   });
 }
 
-function stylePageClone(
+function styleFullClone(
   page: HTMLElement,
   options: {
     widthMm: number;
     heightMm: number;
     fontScale: number;
     contentPadding: number;
-    clip: boolean;
   },
 ) {
   page.style.width = `${options.widthMm}mm`;
-  page.style.height = options.clip ? `${options.heightMm}mm` : "auto";
+  page.style.height = "auto";
   page.style.minHeight = `${options.heightMm}mm`;
-  page.style.maxHeight = options.clip ? `${options.heightMm}mm` : "none";
-  page.style.overflow = options.clip ? "hidden" : "visible";
+  page.style.maxHeight = "none";
+  page.style.overflow = "visible";
   page.style.fontSize = `${options.fontScale}%`;
   page.style.background = "white";
   page.style.transform = "none";
   page.style.boxShadow = "none";
+  page.style.position = "relative";
 
   const aside = page.querySelector("aside") as HTMLElement | null;
   const main = page.querySelector("main") as HTMLElement | null;
   if (aside) aside.style.padding = `${options.contentPadding}px ${options.contentPadding * 0.667}px`;
   if (main) main.style.padding = `${options.contentPadding}px`;
 
-  // Inner grid should stretch with content when measuring
-  const grid = page.firstElementChild as HTMLElement | null;
+  const grid = page.querySelector(".sheet-grid, .grid") as HTMLElement | null;
   if (grid) {
-    grid.style.minHeight = options.clip ? `${options.heightMm}mm` : "auto";
-    if (!options.clip) grid.style.height = "auto";
+    grid.style.minHeight = `${options.heightMm}mm`;
+    grid.style.height = "auto";
   }
 
   page
@@ -134,11 +141,9 @@ function stylePageClone(
     .forEach((node) => node.remove());
 }
 
-
-
 /**
- * Classic sidebar PDF: capture the live `.sheet` DOM so preview and PDF match.
- * Uses html2canvas-pro (oklch-safe for Tailwind v4).
+ * WYSIWYG PDF: capture the full sheet once, then slice into paper-sized pages.
+ * Keeps sidebar + main continuous across pages (no cleared aside).
  */
 export async function exportPdfFromSheet(
   sheetRoot: HTMLElement,
@@ -148,15 +153,23 @@ export async function exportPdfFromSheet(
   const heightMm = options.heightMm ?? 297;
   const fontScale = options.fontScale ?? 100;
   const contentPadding = options.contentPadding ?? 48;
+  const onProgress = options.onProgress;
   const themeColors = resolveThemeColors(sheetRoot);
+
+  onProgress?.({
+    phase: "prepare",
+    current: 0,
+    total: 1,
+    message: "Preparing resume for PDF…",
+  });
 
   await document.fonts?.ready;
 
-  const pdfDoc = new jsPDF("p", "mm", "a4");
-  const pageWidth = pdfDoc.internal.pageSize.getWidth();
-  const pageHeight = pdfDoc.internal.pageSize.getHeight();
-  const mmToPx = 3.7795275591;
-  const pageHeightPx = pageHeight * mmToPx;
+  const pdfDoc = new jsPDF({
+    orientation: "p",
+    unit: "mm",
+    format: [widthMm, heightMm],
+  });
 
   const temp = document.createElement("div");
   temp.setAttribute("data-rb-pdf-temp", "true");
@@ -167,94 +180,69 @@ export async function exportPdfFromSheet(
   document.body.appendChild(temp);
 
   try {
-    // Measure full content height from a laid-out clone (works even if the live
-    // preview is display:none on mobile edit pane).
-    const measure = sheetRoot.cloneNode(true) as HTMLElement;
-    stylePageClone(measure, {
-      widthMm,
-      heightMm,
-      fontScale,
-      contentPadding,
-      clip: false,
-    });
-    applyThemeColors(measure, themeColors);
-    temp.appendChild(measure);
-    await new Promise((r) => setTimeout(r, 50));
-
-    const mainContent = measure.querySelector("main");
-    const contentHeightPx = Math.max(
-      measure.scrollHeight,
-      measure.offsetHeight,
-      mainContent?.scrollHeight ?? 0,
-    );
-    const captureScale = contentHeightPx > pageHeightPx * 2 ? 1.5 : 2;
-
-    const page1 = sheetRoot.cloneNode(true) as HTMLElement;
-    stylePageClone(page1, { widthMm, heightMm, fontScale, contentPadding, clip: true });
-    applyThemeColors(page1, themeColors);
-    temp.appendChild(page1);
+    const full = sheetRoot.cloneNode(true) as HTMLElement;
+    styleFullClone(full, { widthMm, heightMm, fontScale, contentPadding });
+    applyThemeColors(full, themeColors);
+    temp.appendChild(full);
     await new Promise((r) => setTimeout(r, 80));
 
-    const canvas1 = await html2canvas(page1, {
+    const contentHeightPx = Math.max(full.scrollHeight, full.offsetHeight, 1);
+    const pageHeightPx = full.offsetWidth * (heightMm / widthMm);
+    const captureScale = contentHeightPx > pageHeightPx * 2 ? 1.5 : 2;
+
+    onProgress?.({
+      phase: "capture",
+      current: 0,
+      total: 1,
+      message: "Capturing live preview…",
+    });
+
+    const canvas = await html2canvas(full, {
       scale: captureScale,
       useCORS: true,
       backgroundColor: "#ffffff",
-      width: page1.offsetWidth,
-      height: page1.offsetHeight,
+      width: full.offsetWidth,
+      height: contentHeightPx,
+      windowWidth: full.offsetWidth,
+      windowHeight: contentHeightPx,
     });
-    // JPEG keeps multi-page resumes downloadable on mobile (PNG was 20MB+).
-    pdfDoc.addImage(
-      canvas1.toDataURL("image/jpeg", 0.92),
-      "JPEG",
-      0,
-      0,
-      pageWidth,
-      pageHeight,
-      undefined,
-      "FAST",
-    );
-    page1.remove();
 
-    if (mainContent && contentHeightPx > pageHeightPx + 2) {
-      const remainingHeight = contentHeightPx - pageHeightPx;
-      const additionalPages = Math.ceil(remainingHeight / pageHeightPx);
-      for (let i = 0; i < additionalPages; i++) {
-        const pageN = sheetRoot.cloneNode(true) as HTMLElement;
-        stylePageClone(pageN, { widthMm, heightMm, fontScale, contentPadding, clip: true });
-        applyThemeColors(pageN, themeColors);
+    const sliceHeight = Math.max(1, Math.round(pageHeightPx * captureScale));
+    const totalPages = Math.max(1, Math.ceil(canvas.height / sliceHeight));
 
-        const asideN = pageN.querySelector("aside") as HTMLElement | null;
-        const mainN = pageN.querySelector("main") as HTMLElement | null;
-        if (asideN) asideN.innerHTML = "";
-        if (mainN) {
-          mainN.style.marginTop = `-${pageHeightPx * (i + 1)}px`;
-        }
+    for (let i = 0; i < totalPages; i++) {
+      onProgress?.({
+        phase: "render",
+        current: i + 1,
+        total: totalPages,
+        message: `Rendering page ${i + 1} of ${totalPages}…`,
+      });
 
-        temp.appendChild(pageN);
-        await new Promise((r) => setTimeout(r, 80));
-        const canvasN = await html2canvas(pageN, {
-          scale: captureScale,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          width: pageN.offsetWidth,
-          height: pageN.offsetHeight,
-        });
-        pdfDoc.addPage();
-        pdfDoc.addImage(
-          canvasN.toDataURL("image/jpeg", 0.92),
-          "JPEG",
-          0,
-          0,
-          pageWidth,
-          pageHeight,
-          undefined,
-          "FAST",
-        );
-        pageN.remove();
-      }
+      const sourceY = i * sliceHeight;
+      const sourceH = Math.min(sliceHeight, canvas.height - sourceY);
+      const slice = document.createElement("canvas");
+      slice.width = canvas.width;
+      slice.height = sliceHeight;
+      const ctx = slice.getContext("2d");
+      if (!ctx) throw new Error("Could not create PDF page canvas");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, slice.width, slice.height);
+      ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceH, 0, 0, canvas.width, sourceH);
+
+      if (i > 0) pdfDoc.addPage([widthMm, heightMm]);
+      pdfDoc.addImage(
+        slice.toDataURL("image/jpeg", 0.92),
+        "JPEG",
+        0,
+        0,
+        widthMm,
+        heightMm,
+        undefined,
+        "FAST",
+      );
     }
 
-    measure.remove();
+    full.remove();
     return pdfDoc.output("blob");
   } finally {
     temp.remove();
@@ -288,7 +276,7 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
         switch (block.type) {
           case "heading":
             return (
-              <Text key={key} style={block.level === 1 ? s.h1 : s.h2}>
+              <Text key={key} style={block.level === 1 ? s.h1 : s.h2} wrap={false}>
                 {block.text}
               </Text>
             );
@@ -306,7 +294,7 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
             );
           case "bullets":
             return (
-              <View key={key}>
+              <View key={key} wrap={false}>
                 {block.items.map((item, idx) => (
                   <Text key={idx} style={s.p}>
                     • {item}
@@ -324,13 +312,13 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
             );
           case "lineItem":
             return (
-              <Text key={key} style={s.p}>
+              <Text key={key} style={s.p} wrap={false}>
                 {block.text} {block.muted || ""}
               </Text>
             );
           case "entry":
             return (
-              <View key={key} style={{ marginBottom: 6 }}>
+              <View key={key} style={{ marginBottom: 6 }} wrap={false}>
                 <Text style={{ fontFamily: "Helvetica-Bold" }}>{block.title}</Text>
                 {block.subtitle ? <Text style={s.p}>{block.subtitle}</Text> : null}
                 {block.meta ? <Text style={s.p}>{block.meta}</Text> : null}
@@ -373,10 +361,15 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
   );
 }
 
-async function exportPdfFromIr(doc: ResumeDocument): Promise<Blob> {
+async function exportPdfFromIr(
+  doc: ResumeDocument,
+  options: PdfExportOptions = {},
+): Promise<Blob> {
   const ir = documentToIr(doc);
   const s = stylesFor(ir.themeId);
   const page = ir.pages[0];
+  const widthMm = options.widthMm ?? ir.paper.widthMm;
+  const heightMm = options.heightMm ?? ir.paper.heightMm;
   const blocks =
     ir.templateId === "sidebar"
       ? [
@@ -387,7 +380,7 @@ async function exportPdfFromIr(doc: ResumeDocument): Promise<Blob> {
 
   const instance = pdf(
     <Document>
-      <Page size="A4" style={s.page} wrap>
+      <Page size={[widthMm, heightMm]} style={s.page} wrap>
         <PdfBlocks blocks={blocks} s={s} />
       </Page>
     </Document>,
@@ -401,19 +394,21 @@ export async function exportPdfBlob(
   options: PdfExportOptions = {},
 ): Promise<Blob> {
   const root = sheetRoot ?? document.querySelector<HTMLElement>(".sheet");
-  const canCaptureSheet =
-    Boolean(root) &&
-    (doc.template === "sidebar" ||
-      Boolean(root?.querySelector("aside") && root?.querySelector("main")));
-
-  if (canCaptureSheet && root) {
+  // Prefer live sheet capture for every template (true WYSIWYG).
+  if (root) {
     try {
       return await exportPdfFromSheet(root, { name: doc.name, ...options });
     } catch (error) {
       console.warn("Sheet PDF capture failed; falling back to vector PDF", error);
+      options.onProgress?.({
+        phase: "render",
+        current: 1,
+        total: 1,
+        message: "Using vector fallback…",
+      });
     }
   }
-  return exportPdfFromIr(doc);
+  return exportPdfFromIr(doc, options);
 }
 
 export async function downloadPdf(

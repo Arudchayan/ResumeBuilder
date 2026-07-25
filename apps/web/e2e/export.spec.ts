@@ -62,14 +62,29 @@ test.describe("PDF export", () => {
     const pageCountText = await page.getByTestId("page-count-label").innerText();
     const match = pageCountText.match(/Exports as (\d+)/);
     expect(match).toBeTruthy();
-    const pages = Number(match![1]);
-    expect(pages).toBeGreaterThanOrEqual(2);
+    const pagesBefore = Number(match![1]);
+    expect(pagesBefore).toBeGreaterThanOrEqual(2);
 
     await expect(page.locator(".page-break-indicator").first()).toBeVisible();
     await expect(page.locator(".page-number-badge").first()).toContainText("1/");
 
+    // Compact skills should reduce length
+    await page.getByRole("button", { name: "Compact skills" }).click();
+    await page.waitForTimeout(300);
+    const afterCompact = await page.getByTestId("page-count-label").innerText();
+    const pagesAfterCompact = Number(afterCompact.match(/Exports as (\d+)/)?.[1] ?? pagesBefore);
+    expect(pagesAfterCompact).toBeLessThanOrEqual(pagesBefore);
+
+    // Letter paper option available
+    await page.locator("#paper-select").selectOption("letter");
+    await expect(page.getByTestId("paper-meta")).toContainText("Letter");
+    await page.locator("#paper-select").selectOption("a4");
+
     const downloadPromise = page.waitForEvent("download", { timeout: 120_000 });
     await page.getByRole("button", { name: "Export PDF" }).click();
+    await expect(page.getByText(/Rendering page|Capturing live preview|Preparing/i).first()).toBeVisible({
+      timeout: 5000,
+    }).catch(() => undefined);
     const download = await downloadPromise;
     const pdfPath = path.join(outDir, "sample-2026.pdf");
     await download.saveAs(pdfPath);

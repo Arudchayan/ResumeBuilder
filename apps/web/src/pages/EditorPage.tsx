@@ -18,12 +18,20 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SECTION_CONFIG, ensureSectionOrder, type ResumeDocument } from "@resume/core";
 import {
-  A4_PAPER,
+  PAPER_PRESETS,
+  applyOnePageVisibility,
+  defaultSkillsDensity,
   documentToIr,
+  findPageCrossings,
   measureSheetPages,
   ResumePreview,
+  suggestFitStep,
   TEMPLATES,
+  trimOlderJobs,
+  type PageCrossing,
+  type PaperId,
   type SheetPageMetrics,
+  type SkillsDensity,
 } from "@resume/templates";
 import { Button, themeCssVars } from "@resume/ui";
 import {
@@ -138,18 +146,23 @@ export function EditorPage() {
   const saveNow = useAppStore((s) => s.saveNow);
   const [mobilePane, setMobilePane] = useState<"edit" | "preview">("edit");
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [contentPadding, setContentPadding] = useState(48);
   const [fontScale, setFontScale] = useState(100);
   const [previewMode, setPreviewMode] = useState<"fit" | "inspect">("fit");
   const [showPageGuides, setShowPageGuides] = useState(true);
+  const [paperId, setPaperId] = useState<PaperId>("a4");
+  const [skillsDensity, setSkillsDensity] = useState<SkillsDensity>(() => defaultSkillsDensity(doc));
   const [pageMetrics, setPageMetrics] = useState<SheetPageMetrics>({
     pages: 1,
-    heightMm: A4_PAPER.heightMm,
-    widthMm: A4_PAPER.widthMm,
+    heightMm: PAPER_PRESETS.a4.heightMm,
+    widthMm: PAPER_PRESETS.a4.widthMm,
     overflowMm: 0,
     fillsFirstPage: 1,
   });
+  const [crossings, setCrossings] = useState<PageCrossing[]>([]);
   const previewHostRef = useRef<HTMLDivElement>(null);
+  const paper = PAPER_PRESETS[paperId];
 
   const order = ensureSectionOrder(doc);
   const ir = useMemo(() => documentToIr(doc), [doc]);
@@ -158,8 +171,12 @@ export function EditorPage() {
   const visibleCount = order.filter((id) => doc.sectionVisibility?.[id] !== false).length;
   const pageSummary =
     pageMetrics.pages === 1
-      ? `Exports as 1 × ${A4_PAPER.name} page`
-      : `Exports as ${pageMetrics.pages} × ${A4_PAPER.name} pages`;
+      ? `Exports as 1 × ${paper.name} page`
+      : `Exports as ${pageMetrics.pages} × ${paper.name} pages`;
+
+  useEffect(() => {
+    setSkillsDensity(defaultSkillsDensity(doc));
+  }, [doc.id, doc.skills?.length]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -169,7 +186,7 @@ export function EditorPage() {
   const fitPreview = () => {
     const host = previewHostRef.current;
     if (!host) return;
-    const sheetPx = (210 / 25.4) * 96;
+    const sheetPx = (paper.widthMm / 25.4) * 96;
     const available = Math.max(280, host.clientWidth - 48);
     setZoom(Math.min(1, Math.max(0.45, available / sheetPx)));
   };
@@ -180,7 +197,7 @@ export function EditorPage() {
     const onResize = () => fitPreview();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [previewMode]);
+  }, [previewMode, paperId]);
 
   useEffect(() => {
     const host = previewHostRef.current;
@@ -189,7 +206,8 @@ export function EditorPage() {
     const updateMetrics = () => {
       const sheet = host.querySelector<HTMLElement>(".sheet");
       if (!sheet) return;
-      setPageMetrics(measureSheetPages(sheet, ir.paper));
+      setPageMetrics(measureSheetPages(sheet, paper));
+      setCrossings(findPageCrossings(sheet, paper));
     };
 
     updateMetrics();
@@ -202,7 +220,7 @@ export function EditorPage() {
       observer.disconnect();
       window.removeEventListener("resize", updateMetrics);
     };
-  }, [doc, ir.paper, contentPadding, fontScale, zoom, mobilePane, previewMode]);
+  }, [doc, paper, contentPadding, fontScale, zoom, mobilePane, previewMode, skillsDensity]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -235,23 +253,28 @@ export function EditorPage() {
 
   const runExport = async (kind: "pdf" | "docx") => {
     setExporting(kind);
+    setExportStatus(kind === "pdf" ? "Preparing PDF…" : "Preparing DOCX…");
     try {
       const { downloadPdf, downloadDocx } = await import("@resume/export");
       const filename = (doc.name || "resume").trim().replace(/\s+/g, "_") || "resume";
       if (kind === "pdf") {
-        // Preview may be display:none on mobile edit pane; export clones the sheet
-        // into an off-screen measurable container, so a hidden source is fine.
         const sheet =
           previewHostRef.current?.querySelector<HTMLElement>(".sheet") ??
           document.querySelector<HTMLElement>(".sheet");
         if (!sheet) throw new Error("Resume preview sheet not found for PDF export");
-        await downloadPdf(doc, `${filename}.pdf`, sheet, { fontScale, contentPadding });
+        await downloadPdf(doc, `${filename}.pdf`, sheet, {
+          fontScale,
+          contentPadding,
+          widthMm: paper.widthMm,
+          heightMm: paper.heightMm,
+          onProgress: (progress) => setExportStatus(progress.message),
+        });
       } else {
         await downloadDocx(doc, `${filename}.docx`);
       }
       toast.success(
         kind === "pdf"
-          ? `PDF downloaded (${pageMetrics.pages} × ${A4_PAPER.name})`
+          ? `PDF downloaded (${pageMetrics.pages} × ${paper.name})`
           : "DOCX downloaded",
       );
     } catch (error) {
@@ -260,6 +283,71 @@ export function EditorPage() {
       toast.error(`${message}. Check the resume content and try again.`);
     } finally {
       setExporting(null);
+      setExportStatus(null);
+    }
+  };
+
+  const fitToPages = async (targetPages: number) => {
+    let nextFont = fontScale;
+    let nextPad = contentPadding;
+    let currentPages = pageMetrics.pages;
+    setSkillsDensity("compact");
+    for (let step = 0; step < 12; step++) {
+      const sheet = previewHostRef.current?.querySelector<HTMLElement>(".sheet");
+      if (sheet) {
+        currentPages = measureSheetPages(sheet, paper).pages;
+        setPageMetrics(measureSheetPages(sheet, paper));
+      }
+      if (currentPages <= targetPages) {
+        toast.success(`Fitted to ${currentPages} × ${paper.name}`);
+        return;
+      }
+      const suggestion = suggestFitStep({
+        currentPages,
+        targetPages,
+        fontScale: nextFont,
+        contentPadding: nextPad,
+      });
+      if (!suggestion) break;
+      nextFont = suggestion.fontScale;
+      nextPad = suggestion.contentPadding;
+      setFontScale(nextFont);
+      setContentPadding(nextPad);
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 100)));
+    }
+    const sheet = previewHostRef.current?.querySelector<HTMLElement>(".sheet");
+    const finalPages = sheet ? measureSheetPages(sheet, paper).pages : currentPages;
+    toast.message(
+      finalPages <= targetPages
+        ? `Fitted to ${finalPages} × ${paper.name}`
+        : `Still ${finalPages} pages — try trim modes or hide sections`,
+    );
+  };
+
+  const applyTrimMode = (mode: "one-page" | "recent-jobs" | "compact-skills") => {
+    if (mode === "compact-skills") {
+      setSkillsDensity("compact");
+      toast.success("Compact skills applied");
+      return;
+    }
+    if (mode === "one-page") {
+      const visibility = applyOnePageVisibility(doc);
+      apply({ type: "setDocument", document: { ...doc, sectionVisibility: visibility } });
+      setSkillsDensity("compact");
+      setFontScale(90);
+      setContentPadding(32);
+      void fitToPages(1);
+      toast.success("1-page mode applied");
+      return;
+    }
+    if (mode === "recent-jobs") {
+      const trimmed = trimOlderJobs(doc, 3);
+      if (trimmed.jobs.length === doc.jobs.length) {
+        toast.message("Already showing 3 or fewer roles");
+        return;
+      }
+      apply({ type: "setDocument", document: trimmed });
+      toast.success("Kept 3 most recent roles");
     }
   };
 
@@ -495,7 +583,7 @@ export function EditorPage() {
                 <h2 className="panel-title">Preview resume</h2>
               </div>
               <span className="section-state" data-testid="paper-meta">
-                {A4_PAPER.label} · {Math.round(zoom * 100)}%
+                {paper.label} · {Math.round(zoom * 100)}%
               </span>
             </div>
             <div className="page-metrics-bar" role="status" aria-live="polite">
@@ -503,7 +591,7 @@ export function EditorPage() {
                 <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
                 <strong data-testid="page-count-label">{pageSummary}</strong>
                 <span className="page-metrics-detail" data-testid="paper-size-detail">
-                  Paper {A4_PAPER.label}
+                  Paper {paper.label}
                   {" · "}
                   content ~{Math.round(pageMetrics.heightMm)} mm
                   {pageMetrics.pages > 1
@@ -511,14 +599,36 @@ export function EditorPage() {
                     : " · fits on one page"}
                 </span>
               </div>
-              {pageMetrics.pages >= 3 ? (
+              {exportStatus ? <p className="page-metrics-hint">{exportStatus}</p> : null}
+              {crossings.length > 0 ? (
+                <p className="page-metrics-hint" data-testid="overflow-warnings">
+                  Crosses a page edge:{" "}
+                  {crossings
+                    .slice(0, 4)
+                    .map((c) => `${c.label} (p.${c.crossesPage})`)
+                    .join(" · ")}
+                  {crossings.length > 4 ? ` · +${crossings.length - 4} more` : ""}
+                </p>
+              ) : null}
+              {pageMetrics.pages >= 3 && !exportStatus ? (
                 <p className="page-metrics-hint">
-                  Long resume — use Font/Pad controls, hide sections, or trim skills so fewer A4
-                  pages are needed.
+                  Long resume — use Fit to 2 pages, compact skills, or trim older roles.
                 </p>
               ) : null}
             </div>
             <div className="preview-toolbar">
+              <label className="range-control" htmlFor="paper-select">
+                Paper
+                <select
+                  id="paper-select"
+                  className="select-control rounded-lg border bg-white px-2 py-1 text-xs"
+                  value={paperId}
+                  onChange={(event) => setPaperId(event.target.value as PaperId)}
+                >
+                  <option value="a4">A4</option>
+                  <option value="letter">Letter</option>
+                </select>
+              </label>
               <Button variant="ghost" aria-label="Zoom out" title="Zoom out" onClick={() => { setPreviewMode("inspect"); setZoom(zoom - 0.05); }}>
                 <ZoomOut className="h-4 w-4" aria-hidden="true" />
               </Button>
@@ -553,7 +663,42 @@ export function EditorPage() {
                 onClick={() => setShowPageGuides((value) => !value)}
               >
                 <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
-                {showPageGuides ? "Hide page guides" : "Show page guides"}
+                {showPageGuides ? "Hide guides" : "Show guides"}
+              </Button>
+              <Button
+                variant="secondary"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => void fitToPages(2)}
+              >
+                Fit to 2 pages
+              </Button>
+              <Button
+                variant="secondary"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => void fitToPages(1)}
+              >
+                Fit to 1 page
+              </Button>
+              <Button
+                variant={skillsDensity === "compact" ? "primary" : "secondary"}
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => applyTrimMode("compact-skills")}
+              >
+                Compact skills
+              </Button>
+              <Button
+                variant="secondary"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => applyTrimMode("recent-jobs")}
+              >
+                Keep 3 roles
+              </Button>
+              <Button
+                variant="secondary"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => applyTrimMode("one-page")}
+              >
+                1-page mode
               </Button>
               <Button
                 variant="ghost"
@@ -561,6 +706,7 @@ export function EditorPage() {
                 onClick={() => {
                   setContentPadding(48);
                   setFontScale(100);
+                  setSkillsDensity(defaultSkillsDensity(doc));
                   setPreviewMode("fit");
                   requestAnimationFrame(fitPreview);
                   toast.success("Preview layout reset");
@@ -605,6 +751,8 @@ export function EditorPage() {
                 fontScale={fontScale}
                 pageCount={pageMetrics.pages}
                 showPageGuides={showPageGuides}
+                paperId={paperId}
+                skillsDensity={skillsDensity}
                 onSectionClick={(sectionId) => {
                   setActiveSection(sectionId);
                   setMobilePane("edit");

@@ -585,6 +585,28 @@ textarea:focus-visible {
   padding: 0.22rem 0.4rem;
 }
 
+/* Prefer keeping entries/titles together when printing / estimating breaks. */
+.rb-keep,
+.rb-entry,
+.rb-section > h3,
+.skills-compact {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.rb-section {
+  break-inside: avoid-page;
+}
+
+.skills-compact {
+  hyphens: auto;
+}
+
+.ats-standard,
+.ats-compact {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
 .section-editor {
   display: grid;
   gap: 1.25rem;
@@ -934,6 +956,11 @@ textarea:focus-visible {
 }
 
 @media print {
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
   body {
     background: white;
   }
@@ -943,7 +970,8 @@ textarea:focus-visible {
   .workspace-sidebar,
   .workspace-editor,
   .preview-panel-head,
-  .preview-toolbar {
+  .preview-toolbar,
+  .page-metrics-bar {
     display: none !important;
   }
 
@@ -970,13 +998,20 @@ textarea:focus-visible {
 
   .preview-stage .sheet {
     box-shadow: none !important;
+    border: 0 !important;
   }
 
   .page-break-indicator,
   .page-number-badge,
-  .page-band,
-  .page-metrics-bar {
+  .page-band {
     display: none !important;
+  }
+
+  .rb-keep,
+  .rb-entry,
+  .rb-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 

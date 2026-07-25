@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { A4_PAPER, measureSheetPages } from "../preview/paper.js";
+import {
+  PAPER_PRESETS,
+  measureSheetPages,
+  suggestFitStep,
+} from "../preview/paper.js";
 
 function fakeSheet(widthPx: number, heightPx: number): HTMLElement {
   return {
@@ -11,9 +15,8 @@ function fakeSheet(widthPx: number, heightPx: number): HTMLElement {
 
 describe("measureSheetPages", () => {
   it("counts a single A4 page when height matches width ratio", () => {
-    // 210mm wide → 794px at 96dpi; 297mm → ~1123px
-    const widthPx = (A4_PAPER.widthMm / 25.4) * 96;
-    const heightPx = (A4_PAPER.heightMm / 25.4) * 96;
+    const widthPx = (PAPER_PRESETS.a4.widthMm / 25.4) * 96;
+    const heightPx = (PAPER_PRESETS.a4.heightMm / 25.4) * 96;
     const metrics = measureSheetPages(fakeSheet(widthPx, heightPx));
     expect(metrics.pages).toBe(1);
     expect(metrics.overflowMm).toBeLessThan(1);
@@ -25,5 +28,37 @@ describe("measureSheetPages", () => {
     const metrics = measureSheetPages(fakeSheet(widthPx, heightPx));
     expect(metrics.pages).toBe(3);
     expect(metrics.overflowMm).toBeGreaterThan(500);
+  });
+
+  it("supports letter paper dimensions", () => {
+    const widthPx = (PAPER_PRESETS.letter.widthMm / 25.4) * 96;
+    const heightPx = (PAPER_PRESETS.letter.heightMm / 25.4) * 96;
+    const metrics = measureSheetPages(fakeSheet(widthPx, heightPx), PAPER_PRESETS.letter);
+    expect(metrics.pages).toBe(1);
+    expect(metrics.widthMm).toBe(PAPER_PRESETS.letter.widthMm);
+  });
+});
+
+describe("suggestFitStep", () => {
+  it("reduces font before padding", () => {
+    expect(
+      suggestFitStep({
+        currentPages: 3,
+        targetPages: 2,
+        fontScale: 100,
+        contentPadding: 48,
+      }),
+    ).toEqual({ fontScale: 95, contentPadding: 48 });
+  });
+
+  it("returns null when already fitting", () => {
+    expect(
+      suggestFitStep({
+        currentPages: 2,
+        targetPages: 2,
+        fontScale: 100,
+        contentPadding: 48,
+      }),
+    ).toBeNull();
   });
 });

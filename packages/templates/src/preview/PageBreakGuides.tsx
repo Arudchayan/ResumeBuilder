@@ -39,7 +39,7 @@ export function PageBreakGuides({
         const isLast = pageNumber === safePages;
         const label =
           safePages === 1
-            ? `A4 page ends (${pageHeightMm} mm)`
+            ? `Page ends (${pageHeightMm} mm)`
             : isLast
               ? `Page ${pageNumber} ends · PDF bottom`
               : `Page ${pageNumber} ends · page ${pageNumber + 1} starts`;
