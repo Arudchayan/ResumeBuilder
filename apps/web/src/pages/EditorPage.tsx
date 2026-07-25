@@ -287,16 +287,24 @@ export function EditorPage() {
     }
   };
 
-  const fitToPages = async (targetPages: number) => {
-    let nextFont = fontScale;
-    let nextPad = contentPadding;
+  const fitToPages = async (
+    targetPages: number,
+    seed?: { fontScale: number; contentPadding: number },
+  ) => {
+    let nextFont = seed?.fontScale ?? fontScale;
+    let nextPad = seed?.contentPadding ?? contentPadding;
     let currentPages = pageMetrics.pages;
     setSkillsDensity("compact");
+    setFontScale(nextFont);
+    setContentPadding(nextPad);
+    await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
+
     for (let step = 0; step < 12; step++) {
       const sheet = previewHostRef.current?.querySelector<HTMLElement>(".sheet");
       if (sheet) {
-        currentPages = measureSheetPages(sheet, paper).pages;
-        setPageMetrics(measureSheetPages(sheet, paper));
+        const metrics = measureSheetPages(sheet, paper);
+        currentPages = metrics.pages;
+        setPageMetrics(metrics);
       }
       if (currentPages <= targetPages) {
         toast.success(`Fitted to ${currentPages} × ${paper.name}`);
@@ -313,7 +321,7 @@ export function EditorPage() {
       nextPad = suggestion.contentPadding;
       setFontScale(nextFont);
       setContentPadding(nextPad);
-      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 100)));
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
     }
     const sheet = previewHostRef.current?.querySelector<HTMLElement>(".sheet");
     const finalPages = sheet ? measureSheetPages(sheet, paper).pages : currentPages;
@@ -333,11 +341,7 @@ export function EditorPage() {
     if (mode === "one-page") {
       const visibility = applyOnePageVisibility(doc);
       apply({ type: "setDocument", document: { ...doc, sectionVisibility: visibility } });
-      setSkillsDensity("compact");
-      setFontScale(90);
-      setContentPadding(32);
-      void fitToPages(1);
-      toast.success("1-page mode applied");
+      void fitToPages(1, { fontScale: 90, contentPadding: 32 });
       return;
     }
     if (mode === "recent-jobs") {
@@ -347,7 +351,7 @@ export function EditorPage() {
         return;
       }
       apply({ type: "setDocument", document: trimmed });
-      toast.success("Kept 3 most recent roles");
+      toast.success("Kept 3 most recent roles (undo with Ctrl/Cmd+Z)");
     }
   };
 

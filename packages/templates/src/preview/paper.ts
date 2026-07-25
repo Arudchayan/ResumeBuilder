@@ -70,16 +70,18 @@ export function findPageCrossings(
 ): PageCrossing[] {
   const widthPx = Math.max(1, sheet.offsetWidth);
   const pageHeightPx = (paper.heightMm / paper.widthMm) * widthPx;
-  const sheetTop = sheet.getBoundingClientRect().top;
+  // Preview zoom scales getBoundingClientRect; divide it back out.
+  const sheetBox = sheet.getBoundingClientRect();
+  const scale = Math.max(0.01, sheetBox.width / widthPx);
   const crossings: PageCrossing[] = [];
   const seen = new Set<string>();
 
   sheet.querySelectorAll<HTMLElement>("[data-section]").forEach((el) => {
     const sectionId = el.dataset.section;
     if (!sectionId || seen.has(sectionId)) return;
-    const rect = el.getBoundingClientRect();
-    const top = rect.top - sheetTop;
-    const bottom = rect.bottom - sheetTop;
+    const box = el.getBoundingClientRect();
+    const top = (box.top - sheetBox.top) / scale;
+    const bottom = (box.bottom - sheetBox.top) / scale;
     const startPage = Math.floor(top / pageHeightPx) + 1;
     const endPage = Math.floor((bottom - 1) / pageHeightPx) + 1;
     if (endPage > startPage) {
