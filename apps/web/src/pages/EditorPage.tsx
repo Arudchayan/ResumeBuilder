@@ -195,18 +195,23 @@ export function EditorPage() {
     setExporting(kind);
     try {
       const { downloadPdf, downloadDocx } = await import("@resume/export");
-      const filename = (doc.name || "resume").trim().replace(/\s+/g, "_");
+      const filename = (doc.name || "resume").trim().replace(/\s+/g, "_") || "resume";
       if (kind === "pdf") {
+        // Preview may be display:none on mobile edit pane; export clones the sheet
+        // into an off-screen measurable container, so a hidden source is fine.
         const sheet =
-          previewHostRef.current?.querySelector<HTMLElement>(".sheet") ?? document.querySelector<HTMLElement>(".sheet");
-        await downloadPdf(doc, `${filename}.pdf`, sheet);
+          previewHostRef.current?.querySelector<HTMLElement>(".sheet") ??
+          document.querySelector<HTMLElement>(".sheet");
+        if (!sheet) throw new Error("Resume preview sheet not found for PDF export");
+        await downloadPdf(doc, `${filename}.pdf`, sheet, { fontScale, contentPadding });
       } else {
         await downloadDocx(doc, `${filename}.docx`);
       }
       toast.success(kind === "pdf" ? "PDF downloaded" : "DOCX downloaded");
     } catch (error) {
       console.error(error);
-      toast.error("Export failed. Check the resume content and try again.");
+      const message = error instanceof Error && error.message ? error.message : "Export failed";
+      toast.error(`${message}. Check the resume content and try again.`);
     } finally {
       setExporting(null);
     }
