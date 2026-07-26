@@ -1,40 +1,61 @@
-# Resume Builder
+# Resume Forge
 
-A modern, interactive Resume Builder built with React. Edit your resume with an intuitive editor, see a live preview, and export to PDF or DOCX.
+A state-of-the-art, **local-first** resume builder: template gallery, section editor, live preview, and vector PDF / DOCX export from a shared layout model.
 
-Badges: React 18.3.1 • Tailwind 3.4.3 • Vite 5 • MIT
+**Stack:** React 19 · TypeScript · Vite 6 · Tailwind 4 · pnpm workspaces · Zod · IndexedDB · `@react-pdf/renderer` · Playwright
 
-Live Demo
-- https://Arudchayan.github.io/ResumeBuilder/
+Live demo (GitHub Pages): configure `base` in `apps/web/vite.config.ts` to match your repo path (default `/ResumeBuilder/`).
 
-Features
-- Live preview with professional layout and print styles
-- Import/Export JSON, multi-page PDF export, and DOCX export
-- Drag-and-drop section ordering, toggle section visibility
-- Auto-save to localStorage, undo/redo with shortcuts
-- Strong input sanitization (XSS-safe), image and URL validation
+## Monorepo
 
-Tech Stack
-- React + Vite + Tailwind CSS
-- jsPDF + html2canvas, docx, lucide-react, sonner, @dnd-kit
+```
+apps/web              UI (gallery + editor)
+packages/core         Schema, commands, history
+packages/templates    Layout IR + 3 templates + React preview
+packages/export       PDF / DOCX / JSON from IR
+packages/storage      StoragePort + IndexedDB + legacy migrator
+packages/ports        AuthPort / AiPort stubs for future SaaS
+packages/ui           Design tokens + primitives
+docs/architecture     Growth seams + delivery phases
+```
 
-Quick Start
-- Prereqs: Node 18+ and npm
-- Install: `npm install`
-- Dev: `npm run dev` (opens http://localhost:3000)
-- Build: `npm run build` → outputs to `dist/`
+## Quick start
 
-Usage
-- Load Sample: Click “Load Sample”
-- Edit: Use the left panel to edit sections (identity, contact, skills, jobs, projects, certs, education, etc.)
-- Export: “Export JSON”, “Export to PDF”, or “Export to DOCX”
+```bash
+pnpm install
+pnpm dev          # http://localhost:3000/ResumeBuilder/
+pnpm test
+pnpm build
+```
 
-Deployment (GitHub Pages)
-- This repo includes a GitHub Actions workflow at `.github/workflows/deploy.yml`
-- Push to `main` to build and deploy to Pages
-- Ensure Vite base in `vite.config.js` matches your repo path (e.g., `/ResumeBuilder/`)
+## Features
 
-Security
-- All text is sanitized with DOMPurify
-- Only http/https links are allowed; other protocols are blocked
-- Image uploads validated (type, size ≤ 5MB, dimensions 100–4000px)
+- Three templates: ATS single-column, Classic sidebar, Compact modern
+- Live preview with zoom / fit; click preview sections to focus the editor
+- Autosave to IndexedDB; migrates legacy `localStorage.resume_draft`
+- Undo/redo that does **not** steal native text-field undo
+- Export JSON, vector PDF, and DOCX from the same IR
+- Privacy-first: no accounts, no server uploads
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start web app |
+| `pnpm build` | Build packages + web |
+| `pnpm test` | Unit tests (all packages) |
+| `pnpm test:e2e` | Playwright smoke tests |
+| `pnpm typecheck` | TypeScript across workspace |
+
+## Documentation
+
+- [Delivery phases (Phase 0–6 checklist)](docs/architecture/delivery-phases.md)
+- [SaaS growth seams (Phase B)](docs/architecture/saas-seams.md)
+
+## Migration from v1
+
+On first load, if `localStorage.resume_draft` exists it is validated, mapped (`modern` → `sidebar`), saved to IndexedDB, and marked migrated.
+
+## License
+
+MIT

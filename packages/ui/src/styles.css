@@ -1,0 +1,88 @@
+:root {
+  --theme-primary: #0f766e;
+  --theme-dark: #115e59;
+  --theme-light: #5eead4;
+  --theme-surface: #f0fdfa;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Source Sans 3", "Segoe UI", sans-serif;
+  --motion-fast: 150ms;
+  --motion-med: 250ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+.ui-button {
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease;
+}
+
+.ui-button-primary {
+  background: var(--theme-primary);
+  color: white;
+}
+
+.ui-button-primary:hover {
+  background: var(--theme-dark);
+}
+
+.ui-button-secondary {
+  border-color: var(--workspace-line, #dce8e6);
+  background: white;
+  color: #243b3d;
+}
+
+.ui-button-secondary:hover {
+  border-color: color-mix(in srgb, var(--theme-primary) 32%, white);
+  background: var(--theme-surface, #f0f8f9);
+}
+
+.ui-button-ghost {
+  background: transparent;
+  color: #536767;
+}
+
+.ui-button-ghost:hover {
+  background: color-mix(in srgb, var(--theme-primary) 9%, white);
+  color: var(--theme-dark);
+}
+
+.ui-button-danger {
+  background: #b64646;
+  color: white;
+}
+
+.ui-button-danger:hover {
+  background: #963838;
+}
+
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  background: #0f172a;
+  color: white;
+}
+
+.skip-to-content:focus {
+  left: 1rem;
+  top: 1rem;
+}
