@@ -1,0 +1,69 @@
+version: 2
+
+updates:
+  # npm (pnpm) dependencies for ResumeBuilder monorepo
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "Arudchayan"
+    labels:
+      - "dependencies"
+      - "npm"
+    versioning-strategy: increase
+    open-pull-requests-limit: 10
+    # Group non-major updates into a single PR to reduce noise
+    groups:
+      react-vendor:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "@emotion/*"
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+      testing:
+        patterns:
+          - "vitest*"
+          - "@vitest/*"
+          - "@playwright/*"
+          - "@testing-library/*"
+          - "jsdom"
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "tailwindcss*"
+          - "postcss*"
+          - "autoprefixer"
+          - "typescript*"
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "@eslint/*"
+          - "eslint*"
+          - "@commitlint/*"
+          - "cz-*"
+          - "lint-staged"
+          - "husky"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Etc/UTC"
+    assignees:
+      - "Arudchayan"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
