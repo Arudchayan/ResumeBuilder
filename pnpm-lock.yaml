@@ -118,8 +118,8 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5
       html2canvas-pro:
-        specifier: ^2.3.2
-        version: 2.3.2
+        specifier: ^2.3.3
+        version: 2.3.3
       jspdf:
         specifier: 2.5.2
         version: 2.5.2
@@ -1049,8 +1049,8 @@ packages:
   hsl-to-rgb-for-reals@1.1.1:
     resolution: {integrity: sha512-LgOWAkrN0rFaQpfdWBQlv/VhkOxb5AsBjk6NQVx4yEzWS923T07X0M1Y0VNko2H52HeSpZrZNNMJ0aFqsdVzQg==}
 
-  html2canvas-pro@2.3.2:
-    resolution: {integrity: sha512-lYFaxtQM8exYVAtXmjdx8cjkw+/2GycRvSTcr2M2MuxXKuYlWe77+KFKuY92y/tzkvzA8XZTQIDlqoVZDB+mqQ==}
+  html2canvas-pro@2.3.3:
+    resolution: {integrity: sha512-HOPWJ9GJLGEquhZjEDHiJMaUqYdWL0eI5JDZXNiy1Ge2NB5s9QI+uSwKInCy5hnurGRIOpOQvEjolF8ch2XB9Q==}
     engines: {node: '>=16.0.0'}
 
   html2canvas@1.4.1:
@@ -2350,7 +2350,7 @@ snapshots:
 
   hsl-to-rgb-for-reals@1.1.1: {}
 
-  html2canvas-pro@2.3.2:
+  html2canvas-pro@2.3.3:
     dependencies:
       css-line-break: 2.1.0
       text-segmentation: 1.0.3
