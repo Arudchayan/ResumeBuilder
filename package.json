@@ -9,6 +9,7 @@
     "dev": "pnpm --filter @resume/web dev",
     "build": "pnpm --filter @resume/core build && pnpm --filter @resume/ports build && pnpm --filter @resume/ui build && pnpm --filter @resume/storage build && pnpm --filter @resume/templates build && pnpm --filter @resume/export build && pnpm --filter @resume/web build",
     "lint": "pnpm -r lint",
+    "pretest": "pnpm --filter @resume/core build && pnpm --filter @resume/ports build && pnpm --filter @resume/ui build && pnpm --filter @resume/storage build && pnpm --filter @resume/templates build && pnpm --filter @resume/export build",
     "test": "pnpm -r test",
     "test:e2e": "pnpm --filter @resume/web test:e2e",
     "typecheck": "pnpm --filter @resume/core build && pnpm --filter @resume/ports build && pnpm --filter @resume/ui build && pnpm --filter @resume/storage build && pnpm --filter @resume/templates build && pnpm --filter @resume/export build && pnpm --filter @resume/web typecheck"
