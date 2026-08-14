@@ -10,31 +10,31 @@ export default defineConfig({
     alias: [
       {
         find: "@resume/ui/styles.css",
-        replacement: path.resolve(__dirname, "../../packages/ui/src/styles.css"),
+        replacement: path.resolve(import.meta.dirname, "../../packages/ui/src/styles.css"),
       },
       {
         find: "@resume/core",
-        replacement: path.resolve(__dirname, "../../packages/core/src/index.ts"),
+        replacement: path.resolve(import.meta.dirname, "../../packages/core/src/index.ts"),
       },
       {
         find: "@resume/ports",
-        replacement: path.resolve(__dirname, "../../packages/ports/src/index.ts"),
+        replacement: path.resolve(import.meta.dirname, "../../packages/ports/src/index.ts"),
       },
       {
         find: "@resume/storage",
-        replacement: path.resolve(__dirname, "../../packages/storage/src/index.ts"),
+        replacement: path.resolve(import.meta.dirname, "../../packages/storage/src/index.ts"),
       },
       {
         find: "@resume/templates",
-        replacement: path.resolve(__dirname, "../../packages/templates/src/index.ts"),
+        replacement: path.resolve(import.meta.dirname, "../../packages/templates/src/index.ts"),
       },
       {
         find: "@resume/export",
-        replacement: path.resolve(__dirname, "../../packages/export/src/index.ts"),
+        replacement: path.resolve(import.meta.dirname, "../../packages/export/src/index.ts"),
       },
       {
         find: "@resume/ui",
-        replacement: path.resolve(__dirname, "../../packages/ui/src/index.ts"),
+        replacement: path.resolve(import.meta.dirname, "../../packages/ui/src/index.ts"),
       },
     ],
   },
