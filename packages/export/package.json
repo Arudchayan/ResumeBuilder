@@ -18,7 +18,7 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@react-pdf/renderer": "^4.1.6",
+    "@react-pdf/renderer": "^4.6.1",
     "@resume/core": "workspace:*",
     "@resume/templates": "workspace:*",
     "@resume/ui": "workspace:*",
