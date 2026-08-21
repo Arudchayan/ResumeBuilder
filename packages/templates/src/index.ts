@@ -10,6 +10,12 @@ export {
 } from "./ir/documentToIr.js";
 
 export { ResumePreview, TemplateThumb } from "./preview/ResumePreview.js";
+export {
+  buildGalleryTemplatePreviews,
+  getGalleryPreview,
+  GALLERY_PREVIEW_DOC_ID,
+  type GalleryTemplatePreview,
+} from "./preview/galleryPreview.js";
 export { ClassicSidebarSheet } from "./preview/ClassicSidebarSheet.js";
 export { PageBreakGuides } from "./preview/PageBreakGuides.js";
 export {

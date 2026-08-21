@@ -222,6 +222,7 @@ export function ResumePreview({
         className={`sheet relative flex flex-col bg-white text-slate-900 shadow-lg ${
           compact ? "ats-compact" : "ats-standard"
         }`}
+        data-template={ir.templateId}
         data-page-count={pageCount}
         data-paper={paper.id}
         style={{

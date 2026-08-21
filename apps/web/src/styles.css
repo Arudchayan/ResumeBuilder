@@ -717,6 +717,20 @@ textarea:focus-visible {
   top: 1rem;
 }
 
+.gallery-preview-stage {
+  background: var(--workspace-canvas, #edf4f2);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.gallery-preview-frame > .origin-top-left {
+  margin: 0 auto;
+}
+
+.gallery-preview-frame .sheet {
+  border: 1px solid var(--workspace-line, #dce8e6);
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

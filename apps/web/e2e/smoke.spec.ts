@@ -9,7 +9,7 @@ test("gallery shows brand and templates", async ({ page }) => {
   await expect(page.getByRole("banner")).toBeVisible();
   await expect(page.getByText("Resume Builder").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Start with a template" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Classic Sidebar" })).toBeVisible();
+  await expect(page.locator('[data-template-card="sidebar"] h3').first()).toBeVisible();
 });
 
 test("start blank opens editor", async ({ page }) => {
