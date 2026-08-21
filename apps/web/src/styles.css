@@ -1025,3 +1025,8 @@ textarea:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+.ats-analyzer {
+  display: grid;
+  gap: 0.45rem;
+}

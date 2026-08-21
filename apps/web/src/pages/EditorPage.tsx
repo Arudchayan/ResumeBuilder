@@ -57,6 +57,7 @@ import {
 import { toast } from "sonner";
 import { selectDoc, useAppStore } from "../lib/store";
 import { SectionEditor } from "../components/SectionEditor";
+import { AtsAnalyzer } from "../components/AtsAnalyzer";
 
 function SortableTocItem({
   id,
@@ -503,6 +504,8 @@ export function EditorPage() {
             </DndContext>
 
             <div className="sidebar-settings">
+              <span className="settings-label">Tools</span>
+              <AtsAnalyzer doc={doc} />
               <span className="settings-label">Appearance</span>
               <label className="field-stack" htmlFor="theme-select">
                 <span className="settings-label">Accent</span>

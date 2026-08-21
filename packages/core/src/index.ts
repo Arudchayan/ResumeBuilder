@@ -36,3 +36,11 @@ export {
 } from "./history/history.js";
 
 export { sampleResume } from "./sample.js";
+
+export {
+  analyzeAtsMatch,
+  extractJobKeywords,
+  resumeToPlainText,
+  type AtsAnalyzerResult,
+  type AtsKeywordMatch,
+} from "./ats/analyze.js";
