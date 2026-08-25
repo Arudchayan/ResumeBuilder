@@ -1,7 +1,6 @@
 export {
   documentToIr,
   TEMPLATES,
-  getTemplate,
   type LayoutIr,
   type IrBlock,
   type IrColumn,
@@ -12,7 +11,6 @@ export {
 export { ResumePreview, TemplateThumb } from "./preview/ResumePreview.js";
 export { PageBreakGuides } from "./preview/PageBreakGuides.js";
 export {
-  A4_PAPER,
   PAPER_PRESETS,
   measureSheetPages,
   findPageCrossings,

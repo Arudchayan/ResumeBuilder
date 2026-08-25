@@ -35,7 +35,7 @@ describe("measureSheetPages", () => {
     const heightPx = (PAPER_PRESETS.letter.heightMm / 25.4) * 96;
     const metrics = measureSheetPages(fakeSheet(widthPx, heightPx), PAPER_PRESETS.letter);
     expect(metrics.pages).toBe(1);
-    expect(metrics.widthMm).toBe(PAPER_PRESETS.letter.widthMm);
+    expect(metrics.overflowMm).toBeLessThan(1);
   });
 });
 

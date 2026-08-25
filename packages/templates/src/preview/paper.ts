@@ -1,4 +1,4 @@
-/** Supported paper presets for preview + PDF export. */
+/** Supported paper presets for preview + print. */
 export const PAPER_PRESETS = {
   a4: {
     id: "a4",
@@ -6,7 +6,6 @@ export const PAPER_PRESETS = {
     widthMm: 210,
     heightMm: 297,
     label: "A4 · 210 × 297 mm",
-    jsPdfFormat: "a4" as const,
   },
   letter: {
     id: "letter",
@@ -14,22 +13,16 @@ export const PAPER_PRESETS = {
     widthMm: 215.9,
     heightMm: 279.4,
     label: "Letter · 8.5 × 11 in",
-    jsPdfFormat: "letter" as const,
   },
 } as const;
 
 export type PaperId = keyof typeof PAPER_PRESETS;
 export type PaperPreset = (typeof PAPER_PRESETS)[PaperId];
 
-/** @deprecated Use PAPER_PRESETS.a4 — kept for existing imports. */
-export const A4_PAPER = PAPER_PRESETS.a4;
-
 export type SheetPageMetrics = {
   pages: number;
   heightMm: number;
-  widthMm: number;
   overflowMm: number;
-  fillsFirstPage: number;
 };
 
 export type PageCrossing = {
@@ -53,13 +46,10 @@ export function measureSheetPages(
   // Tiny slack so a sheet that is exactly one page does not round up to 2.
   const pages = Math.max(1, Math.ceil((heightMm - 0.75) / paper.heightMm));
   const overflowMm = Math.max(0, heightMm - paper.heightMm);
-  const fillsFirstPage = Math.min(1, heightMm / paper.heightMm);
   return {
     pages,
     heightMm,
-    widthMm: paper.widthMm,
     overflowMm,
-    fillsFirstPage,
   };
 }
 

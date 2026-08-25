@@ -1,14 +1,13 @@
 import type { ResumeDocument, TemplateId } from "@resume/core";
 import { ensureSectionOrder } from "@resume/core";
 
-/** Intermediate representation shared by preview, PDF, and DOCX. */
+/** Intermediate representation shared by preview, DOCX, and print. */
 export type IrBlock =
   | { type: "heading"; level: 1 | 2 | 3; text: string; sectionId?: string }
   | { type: "accentBar"; sectionId?: string }
   | { type: "paragraph"; text: string; muted?: boolean; sectionId?: string }
-  | { type: "bullets"; items: string[]; sectionId?: string }
   | { type: "chips"; items: string[]; sectionId?: string }
-  | { type: "kv"; label: string; value: string; href?: string; sectionId?: string }
+  | { type: "kv"; label: string; value: string; sectionId?: string }
   | { type: "link"; label: string; href: string; sectionId?: string }
   | { type: "photo"; src: string; sectionId?: string }
   | {
@@ -20,16 +19,12 @@ export type IrBlock =
       subsections?: { title?: string; bullets: string[] }[];
       body?: string[];
       url?: string;
-      /** Compact single-line style (certs / edu) */
-      compact?: boolean;
       sectionId?: string;
     }
-  | { type: "lineItem"; text: string; muted?: string; sectionId?: string }
-  | { type: "spacer"; size: "sm" | "md"; sectionId?: string };
+  | { type: "lineItem"; text: string; muted?: string; sectionId?: string };
 
 export interface IrColumn {
   id: string;
-  width: number;
   blocks: IrBlock[];
 }
 
@@ -39,18 +34,14 @@ export interface IrPage {
 
 export interface LayoutIr {
   templateId: TemplateId;
-  paper: { widthMm: number; heightMm: number };
   themeId: string;
   pages: IrPage[];
-  sectionAnchors: string[];
 }
 
 export interface TemplateManifest {
   id: TemplateId;
   name: string;
   description: string;
-  atsFriendly: boolean;
-  supportsPhoto: boolean;
   previewAccent: string;
 }
 
@@ -78,22 +69,10 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
       aside.push({ type: "kv", label: "Location", value: doc.contact.location, sectionId: "contact" });
     }
     if (doc.contact.phone) {
-      aside.push({
-        type: "kv",
-        label: "Phone",
-        value: doc.contact.phone,
-        href: `tel:${doc.contact.phone.replace(/[^\d+]/g, "")}`,
-        sectionId: "contact",
-      });
+      aside.push({ type: "kv", label: "Phone", value: doc.contact.phone, sectionId: "contact" });
     }
     if (doc.contact.email) {
-      aside.push({
-        type: "kv",
-        label: "Email",
-        value: doc.contact.email,
-        href: `mailto:${doc.contact.email}`,
-        sectionId: "contact",
-      });
+      aside.push({ type: "kv", label: "Email", value: doc.contact.email, sectionId: "contact" });
     }
 
     const links = doc.links.filter((l) => l.url && l.label);
@@ -209,7 +188,6 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
             subtitle: p.publisher,
             meta: p.when,
             url: p.url || undefined,
-            compact: true,
             sectionId,
           });
         }
@@ -282,21 +260,17 @@ function buildSingleColumn(doc: ResumeDocument, compact: boolean): IrBlock[] {
 
 export function documentToIr(doc: ResumeDocument): LayoutIr {
   const templateId = doc.template;
-  const sectionAnchors = ensureSectionOrder(doc);
-  const paper = { widthMm: 210, heightMm: 297 };
 
   if (templateId === "sidebar") {
     const { aside, main } = buildSidebarBlocks(doc);
     return {
       templateId,
-      paper,
       themeId: doc.theme,
-      sectionAnchors,
       pages: [
         {
           columns: [
-            { id: "aside", width: 0.32, blocks: aside },
-            { id: "main", width: 0.68, blocks: main },
+            { id: "aside", blocks: aside },
+            { id: "main", blocks: main },
           ],
         },
       ],
@@ -306,10 +280,8 @@ export function documentToIr(doc: ResumeDocument): LayoutIr {
   const blocks = buildSingleColumn(doc, templateId === "compact");
   return {
     templateId,
-    paper,
     themeId: doc.theme,
-    sectionAnchors,
-    pages: [{ columns: [{ id: "main", width: 1, blocks }] }],
+    pages: [{ columns: [{ id: "main", blocks }] }],
   };
 }
 
@@ -318,28 +290,18 @@ export const TEMPLATES: TemplateManifest[] = [
     id: "sidebar",
     name: "Classic Sidebar",
     description: "Two-column professional layout — the original Resume Builder look.",
-    atsFriendly: false,
-    supportsPhoto: true,
     previewAccent: "#14b8a6",
   },
   {
     id: "ats",
     name: "ATS Single Column",
     description: "Clean single-column layout optimized for applicant tracking systems.",
-    atsFriendly: true,
-    supportsPhoto: false,
     previewAccent: "#334155",
   },
   {
     id: "compact",
     name: "Compact Modern",
     description: "Dense single-column layout that packs more content per page.",
-    atsFriendly: true,
-    supportsPhoto: false,
     previewAccent: "#1d4ed8",
   },
 ];
-
-export function getTemplate(id: TemplateId): TemplateManifest {
-  return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0]!;
-}

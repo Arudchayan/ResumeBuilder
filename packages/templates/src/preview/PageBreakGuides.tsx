@@ -1,13 +1,13 @@
-import { A4_PAPER } from "./paper.js";
+import { PAPER_PRESETS } from "./paper.js";
 
 /**
  * Overlay dashed A4 page boundaries on the live sheet so authors can see
- * where the PDF will split before exporting.
+ * where the printout will split before printing.
  */
 export function PageBreakGuides({
   pages,
-  pageHeightMm = A4_PAPER.heightMm,
-  pageWidthMm = A4_PAPER.widthMm,
+  pageHeightMm = PAPER_PRESETS.a4.heightMm,
+  pageWidthMm = PAPER_PRESETS.a4.widthMm,
   visible = true,
 }: {
   pages: number;

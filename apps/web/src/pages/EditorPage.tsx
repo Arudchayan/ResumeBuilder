@@ -146,9 +146,7 @@ export function EditorPage() {
   const [pageMetrics, setPageMetrics] = useState<SheetPageMetrics>({
     pages: 1,
     heightMm: PAPER_PRESETS.a4.heightMm,
-    widthMm: PAPER_PRESETS.a4.widthMm,
     overflowMm: 0,
-    fillsFirstPage: 1,
   });
   const [crossings, setCrossings] = useState<PageCrossing[]>([]);
   const previewHostRef = useRef<HTMLDivElement>(null);
