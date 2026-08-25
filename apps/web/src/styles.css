@@ -13,7 +13,6 @@
   --workspace-line: #dce8e6;
   --workspace-panel: rgba(255, 255, 255, 0.88);
   --workspace-canvas: #edf4f2;
-  --workspace-warm: #fbfaf7;
   --workspace-shadow: 0 20px 60px rgba(24, 58, 56, 0.08);
 }
 
@@ -588,23 +587,9 @@ textarea:focus-visible {
 /* Prefer keeping entries/titles together when printing / estimating breaks. */
 .rb-keep,
 .rb-entry,
-.rb-section > h3,
-.skills-compact {
+.rb-section > h3 {
   break-inside: avoid;
   page-break-inside: avoid;
-}
-
-.rb-section {
-  break-inside: avoid-page;
-}
-
-.skills-compact {
-  hyphens: auto;
-}
-
-.ats-standard,
-.ats-compact {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .section-editor {
@@ -715,21 +700,6 @@ textarea:focus-visible {
 .skip-to-content:focus {
   left: 1rem;
   top: 1rem;
-}
-
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-up {
-  animation: fade-up var(--motion-med) ease-out both;
 }
 
 @media (max-width: 1240px) {

@@ -5,7 +5,6 @@
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Source Sans 3", "Segoe UI", sans-serif;
   --motion-fast: 150ms;
-  --motion-med: 250ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -60,15 +59,6 @@
 .ui-button-ghost:hover {
   background: color-mix(in srgb, var(--theme-primary) 9%, white);
   color: var(--theme-dark);
-}
-
-.ui-button-danger {
-  background: #b64646;
-  color: white;
-}
-
-.ui-button-danger:hover {
-  background: #963838;
 }
 
 .skip-to-content {
