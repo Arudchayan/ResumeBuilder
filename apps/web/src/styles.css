@@ -586,8 +586,7 @@ textarea:focus-visible {
 
 /* Prefer keeping entries/titles together when printing / estimating breaks. */
 .rb-keep,
-.rb-entry,
-.rb-section > h3 {
+.rb-entry {
   break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -978,8 +977,7 @@ textarea:focus-visible {
   }
 
   .rb-keep,
-  .rb-entry,
-  .rb-section {
+  .rb-entry {
     break-inside: avoid;
     page-break-inside: avoid;
   }

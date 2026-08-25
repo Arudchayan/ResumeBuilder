@@ -6,7 +6,6 @@ export {
 } from "./ir/documentToIr.js";
 
 export { ResumePreview, TemplateThumb } from "./preview/ResumePreview.js";
-export { PageBreakGuides } from "./preview/PageBreakGuides.js";
 export {
   PAPER_PRESETS,
   measureSheetPages,

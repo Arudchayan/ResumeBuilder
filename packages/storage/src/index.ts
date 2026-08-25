@@ -30,11 +30,8 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
   if (typeof localStorage === "undefined") return null;
   if (localStorage.getItem(MIGRATED_FLAG) === "1") return null;
   const raw = localStorage.getItem(LEGACY_KEY);
-  if (!raw) {
-    localStorage.setItem(MIGRATED_FLAG, "1");
-    return null;
-  }
   try {
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     delete parsed._savedAt;
     parsed.template = normalizeTemplateId(parsed.template);
