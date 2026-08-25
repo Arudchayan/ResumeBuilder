@@ -175,8 +175,6 @@ export function ResumePreview({
 }) {
   const paper = PAPER_PRESETS[paperId] ?? PAPER_PRESETS.a4;
 
-  const page = ir.pages[0];
-  if (!page) return null;
   const vars = themeCssVars(ir.themeId) as CSSProperties;
   const isSidebar = ir.templateId === "sidebar";
   const pad = contentPadding;
@@ -238,7 +236,7 @@ export function ResumePreview({
                   "linear-gradient(180deg, var(--theme-gradient-from) 0%, var(--theme-gradient-to) 100%)",
               }}
             >
-              {page.columns.find((c) => c.id === "aside")?.blocks.map((block, idx) => (
+              {ir.columns.find((c) => c.id === "aside")?.blocks.map((block, idx) => (
                 <BlockView
                   key={`aside-${idx}-${block.type}`}
                   block={block}
@@ -247,12 +245,12 @@ export function ResumePreview({
               ))}
             </aside>
             <main style={{ padding: `${pad}px` }}>
-              {renderColumn(page.columns.find((c) => c.id === "main")?.blocks ?? [], "main")}
+              {renderColumn(ir.columns.find((c) => c.id === "main")?.blocks ?? [], "main")}
             </main>
           </div>
         ) : (
           <div className="relative z-[1]">
-            {renderColumn(page.columns[0]?.blocks ?? [], "main")}
+            {renderColumn(ir.columns[0]?.blocks ?? [], "main")}
           </div>
         )}
       </div>

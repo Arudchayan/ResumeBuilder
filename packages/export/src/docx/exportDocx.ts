@@ -186,15 +186,14 @@ function buildSidebarTable(asideBlocks: IrBlock[], mainBlocks: IrBlock[]): Table
 
 export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
   const ir = documentToIr(doc);
-  const page = ir.pages[0]!;
   let children: (Paragraph | Table)[];
 
   if (ir.templateId === "sidebar") {
-    const aside = page.columns.find((c) => c.id === "aside");
-    const main = page.columns.find((c) => c.id === "main");
+    const aside = ir.columns.find((c) => c.id === "aside");
+    const main = ir.columns.find((c) => c.id === "main");
     children = [buildSidebarTable(aside?.blocks ?? [], main?.blocks ?? [])];
   } else {
-    const main = page.columns[0]!;
+    const main = ir.columns[0]!;
     children = blocksToParagraphs(main.blocks);
   }
 

@@ -27,14 +27,10 @@ export interface IrColumn {
   blocks: IrBlock[];
 }
 
-export interface IrPage {
-  columns: IrColumn[];
-}
-
 export interface LayoutIr {
   templateId: TemplateId;
   themeId: string;
-  pages: IrPage[];
+  columns: IrColumn[];
 }
 
 export interface TemplateManifest {
@@ -260,13 +256,9 @@ export function documentToIr(doc: ResumeDocument): LayoutIr {
     return {
       templateId,
       themeId: doc.theme,
-      pages: [
-        {
-          columns: [
-            { id: "aside", blocks: aside },
-            { id: "main", blocks: main },
-          ],
-        },
+      columns: [
+        { id: "aside", blocks: aside },
+        { id: "main", blocks: main },
       ],
     };
   }
@@ -275,7 +267,7 @@ export function documentToIr(doc: ResumeDocument): LayoutIr {
   return {
     templateId,
     themeId: doc.theme,
-    pages: [{ columns: [{ id: "main", blocks }] }],
+    columns: [{ id: "main", blocks }],
   };
 }
 

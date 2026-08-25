@@ -4,7 +4,6 @@ export {
   type LayoutIr,
   type IrBlock,
   type IrColumn,
-  type IrPage,
   type TemplateManifest,
 } from "./ir/documentToIr.js";
 
