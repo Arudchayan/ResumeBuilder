@@ -1,0 +1,20 @@
+# ponytail-audit 2 — ResumeBuilder
+
+1. `delete:` root `/fixtures` dir (5 files) — e2e specs read `apps/web/e2e/fixtures/*`, nothing references these copies; `generate.mjs` is wired into no script. Nothing; point any stragglers at the e2e fixtures. [fixtures/]
+2. `native:` whole `html2canvas-pro` + `jspdf` capture/slice pipeline (~275 lines) — the header already ships a Print button calling `window.print()`, the platform's PDF path. Browser print dialog; delete pdf/exportPdf.tsx and update e2e specs. [-2 deps] [packages/export/src/pdf/exportPdf.tsx]
+3. `yagni:` duplicate content renderer `ClassicSidebarSheet` (428 lines) mirroring `documentToIr` block-building — preview bypasses the IR for sidebar while DOCX uses it. Render sidebar preview through existing `BlockView` + a two-column wrapper (~15 lines); drop the `templateId === "sidebar"` special gate. [packages/templates/src/preview/ClassicSidebarSheet.tsx, packages/templates/src/preview/ResumePreview.tsx:185-203]
+4. `delete:` `isSectionEmpty` — 40-line exhaustive switch with zero callers. Nothing. [packages/core/src/schema/sections.ts:31-70]
+5. `delete:` stale `saas-seams.md` — documents `@resume/ports`, `NullAuthPort`, `LocalResumeLibrary`, all deleted since audit 1. Nothing. [docs/architecture/saas-seams.md]
+6. `shrink:` five per-package `vitest.config.ts` files configuring the default (`environment: "node"`). One root config with `projects`/excludes (web needs `exclude: ["**/e2e/**"]`). [packages/*/vitest.config.ts, apps/web/vitest.config.ts]
+7. `delete:` dead IR/metric fields — `LayoutIr.paper` + `sectionAnchors`, `IrColumn.width`, `kv.href` (computed, never rendered), `entry.compact` flag, `spacer` variant (never emitted), `TemplateManifest.atsFriendly`/`supportsPhoto`, `PaperPreset.jsPdfFormat`, `SheetPageMetrics.fillsFirstPage`, `PdfExportOptions.name` (written, never read). Remove fields + their population. [packages/templates/src/ir/documentToIr.ts, packages/templates/src/preview/paper.ts, packages/export/src/pdf/exportPdf.tsx:13]
+8. `delete:` `customSections` schema field — `z.array(z.unknown())` defaulted, persisted, never rendered or read. Nothing; fixtures regenerate. [packages/core/src/schema/resume.ts:189, packages/core/src/schema/sections.ts:89]
+9. `delete:` `exportPdfBlob` — pure alias of `exportPdfFromSheet`, zero callers. Call `exportPdfFromSheet` (or nothing, see #2). [packages/export/src/pdf/exportPdf.tsx:136-141]
+10. `delete:` `getTemplate()` — exported finder with zero callers; callers do `TEMPLATES.find(...)`. Inline find. [packages/templates/src/ir/documentToIr.ts:343-345]
+11. `shrink:` `Field` vs `TextAreaField` — 24 duplicated lines differing only in element + min-height. One component taking `multiline?: boolean`. [packages/ui/src/components/primitives.tsx:43-93]
+12. `delete:` store `exporting` member — typed, initialized null, never set or read; EditorPage keeps local state. Local state already covers it. [apps/web/src/lib/store.ts:34,73]
+13. `shrink:` 7-line createObjectURL+click+revoke download dance copy-pasted 3×. One shared `downloadBlob(blob, filename)` in @resume/export. [packages/export/src/pdf/exportPdf.tsx:251-258, packages/export/src/docx/exportDocx.ts:239-244, apps/web/src/lib/store.ts:185-191]
+14. `delete:` `A4_PAPER` alias self-marked `@deprecated`, sole consumer is `PageBreakGuides` defaults. Use `PAPER_PRESETS.a4`. [packages/templates/src/preview/paper.ts:25, packages/templates/src/preview/PageBreakGuides.tsx:1]
+15. `delete:` `validateResumeData` wrapper — zero callers; `parseResumeData` is the API. Call `resumeSchema.safeParse` if ever needed. [packages/core/src/schema/resume.ts:198-200]
+16. `delete:` unused UI exports — `Label` (internal-only, unexport), `defaultTheme` (zero consumers), `TemplateThumb`'s `children` prop (never passed). Trim to what's imported. [packages/ui/src/components/primitives.tsx:27, packages/ui/src/tokens/themes.ts:69, packages/templates/src/preview/ResumePreview.tsx:255]
+
+net: -1400 lines, -2 deps possible.
