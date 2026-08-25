@@ -16,7 +16,7 @@ import {
   type SheetPageMetrics,
   type SkillsDensity,
 } from "@resume/templates";
-import { Button, themeCssVars } from "@resume/ui";
+import { Button, themes, themeCssVars } from "@resume/ui";
 import {
   Check,
   Download,
@@ -482,14 +482,11 @@ export function EditorPage() {
                   value={doc.theme}
                   onChange={(event) => apply({ type: "setField", path: "theme", value: event.target.value })}
                 >
-                  <option value="teal">Teal</option>
-                  <option value="blue">Professional Blue</option>
-                  <option value="purple">Creative Purple</option>
-                  <option value="green">Nature Green</option>
-                  <option value="slate">Classic Gray</option>
-                  <option value="black">Executive Black</option>
-                  <option value="forest">Forest</option>
-                  <option value="copper">Copper</option>
+                  {Object.entries(themes).map(([id, theme]) => (
+                    <option key={id} value={id}>
+                      {theme.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="field-stack" htmlFor="template-select">
