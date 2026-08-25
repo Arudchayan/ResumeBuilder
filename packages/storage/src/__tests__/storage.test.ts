@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { blankResume, parseResumeData } from "@resume/core";
-import { IndexedDbStorage, parseResumeData } from "../index.js";
+import { IndexedDbStorage } from "../index.js";
 
 describe("IndexedDbStorage", () => {
   it("persists documents", async () => {
