@@ -104,16 +104,6 @@ export class IndexedDbStorage {
     });
   }
 
-  async delete(id: string): Promise<void> {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, "readwrite");
-      tx.objectStore(STORE).delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
   async create(template = "sidebar"): Promise<ResumeDocument> {
     const doc = blankResume({ template: normalizeTemplateId(template) });
     await this.save(doc);
