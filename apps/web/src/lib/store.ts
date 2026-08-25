@@ -3,6 +3,7 @@ import {
   blankResume,
   createHistory,
   dispatch,
+  parseResumeData,
   redo as redoHistory,
   undo as undoHistory,
   sampleResume,
@@ -11,11 +12,7 @@ import {
   type ResumeDocument,
   type TemplateId,
 } from "@resume/core";
-import {
-  IndexedDbStorage,
-  migrateLegacyDraft,
-  parseResumeData,
-} from "@resume/storage";
+import { IndexedDbStorage, migrateLegacyDraft } from "@resume/storage";
 import { downloadBlob } from "@resume/export";
 
 const library = new IndexedDbStorage();
