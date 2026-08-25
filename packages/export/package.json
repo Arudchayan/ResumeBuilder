@@ -21,9 +21,7 @@
     "@resume/core": "workspace:*",
     "@resume/templates": "workspace:*",
     "@resume/ui": "workspace:*",
-    "docx": "^9.5.1",
-    "html2canvas-pro": "^2.3.9",
-    "jspdf": "4.2.1"
+    "docx": "^9.5.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",

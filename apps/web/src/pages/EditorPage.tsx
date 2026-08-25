@@ -1,7 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import {
-  arrayMove,
-} from "@dnd-kit/sortable";
 import { SECTION_CONFIG, ensureSectionOrder, type ResumeDocument } from "@resume/core";
 import {
   PAPER_PRESETS,
@@ -44,39 +41,46 @@ import { toast } from "sonner";
 import { selectDoc, useAppStore } from "../lib/store";
 import { SectionEditor } from "../components/SectionEditor";
 
-function SortableTocItem({
-  id,
+function TocItem({
   label,
   required,
   active,
   visible,
+  first,
+  last,
   onSelect,
   onToggleVisible,
+  onMove,
 }: {
-  id: string;
   label: string;
   required: boolean;
   active: boolean;
   visible: boolean;
+  first: boolean;
+  last: boolean;
   onSelect: () => void;
   onToggleVisible: () => void;
+  onMove: (direction: -1 | 1) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.58 : 1,
-  };
-
   return (
-    <li ref={setNodeRef} style={style} className={`toc-item ${active ? "is-active" : ""}`}>
+    <li className={`toc-item ${active ? "is-active" : ""}`}>
       <button
         type="button"
         className="toc-grip"
-        aria-label={`Drag to reorder ${label}`}
-        title={`Reorder ${label}`}
-        {...attributes}
-        {...listeners}
+        aria-label={`Move ${label} up`}
+        title={`Move ${label} up`}
+        disabled={first}
+        onClick={() => onMove(-1)}
+      >
+        <GripVertical className="h-4 w-4 rotate-180" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className="toc-grip"
+        aria-label={`Move ${label} down`}
+        title={`Move ${label} down`}
+        disabled={last}
+        onClick={() => onMove(1)}
       >
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -228,41 +232,30 @@ export function EditorPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [redo, saveNow, undo]);
 
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = order.indexOf(String(active.id));
-    const newIndex = order.indexOf(String(over.id));
-    if (oldIndex < 0 || newIndex < 0) return;
-    apply({ type: "reorderSections", order: arrayMove(order, oldIndex, newIndex) });
+  const moveSection = (id: string, direction: -1 | 1) => {
+    const from = order.indexOf(id);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= order.length) return;
+    const next = [...order];
+    const [moved] = next.splice(from, 1);
+    if (moved === undefined) return;
+    next.splice(to, 0, moved);
+    apply({ type: "reorderSections", order: next });
   };
 
   const runExport = async (kind: "pdf" | "docx") => {
     setExporting(kind);
     setExportStatus(kind === "pdf" ? "Preparing PDF…" : "Preparing DOCX…");
     try {
-      const { downloadPdf, downloadDocx } = await import("@resume/export");
+      const { downloadDocx } = await import("@resume/export");
       const filename = (doc.name || "resume").trim().replace(/\s+/g, "_") || "resume";
       if (kind === "pdf") {
-        const sheet =
-          previewHostRef.current?.querySelector<HTMLElement>(".sheet") ??
-          document.querySelector<HTMLElement>(".sheet");
-        if (!sheet) throw new Error("Resume preview sheet not found for PDF export");
-        await downloadPdf(doc, `${filename}.pdf`, sheet, {
-          fontScale,
-          contentPadding,
-          widthMm: paper.widthMm,
-          heightMm: paper.heightMm,
-          onProgress: (progress) => setExportStatus(progress.message),
-        });
+        setExportStatus(null);
+        window.print();
+        toast.success("Use the print dialog — choose “Save as PDF”");
       } else {
         await downloadDocx(doc, `${filename}.docx`);
       }
-      toast.success(
-        kind === "pdf"
-          ? `PDF downloaded (${pageMetrics.pages} × ${paper.name})`
-          : "DOCX downloaded",
-      );
     } catch (error) {
       console.error(error);
       const message = error instanceof Error && error.message ? error.message : "Export failed";
@@ -456,37 +449,35 @@ export function EditorPage() {
             </div>
             <p className="panel-hint">Choose a section to edit. Drag to change its order, or hide it from the resume.</p>
 
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={order} strategy={verticalListSortingStrategy}>
-                <ul className="toc-list" aria-label="Resume sections">
-                  {order.map((id) => {
-                    const meta = SECTION_CONFIG.find((section) => section.id === id);
-                    const isVisible = doc.sectionVisibility?.[id] !== false;
-                    return (
-                      <SortableTocItem
-                        key={id}
-                        id={id}
-                        label={meta?.label ?? id}
-                        required={Boolean(meta?.required)}
-                        active={activeSection === id}
-                        visible={isVisible}
-                        onSelect={() => {
-                          setActiveSection(id);
-                          setMobilePane("edit");
-                        }}
-                        onToggleVisible={() =>
-                          apply({
-                            type: "setSectionVisibility",
-                            id,
-                            visible: !isVisible,
-                          })
-                        }
-                      />
-                    );
-                  })}
-                </ul>
-              </SortableContext>
-            </DndContext>
+            <ul className="toc-list" aria-label="Resume sections">
+              {order.map((id, index) => {
+                const meta = SECTION_CONFIG.find((section) => section.id === id);
+                const isVisible = doc.sectionVisibility?.[id] !== false;
+                return (
+                  <TocItem
+                    key={id}
+                    label={meta?.label ?? id}
+                    required={Boolean(meta?.required)}
+                    active={activeSection === id}
+                    visible={isVisible}
+                    first={index === 0}
+                    last={index === order.length - 1}
+                    onSelect={() => {
+                      setActiveSection(id);
+                      setMobilePane("edit");
+                    }}
+                    onToggleVisible={() =>
+                      apply({
+                        type: "setSectionVisibility",
+                        id,
+                        visible: !isVisible,
+                      })
+                    }
+                    onMove={(direction) => moveSection(id, direction)}
+                  />
+                );
+              })}
+            </ul>
 
             <div className="sidebar-settings">
               <span className="settings-label">Appearance</span>
