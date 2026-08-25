@@ -15,7 +15,6 @@ export function createHistory(present: ResumeDocument): HistoryState {
 
 export function dispatch(history: HistoryState, command: ResumeCommand): HistoryState {
   const next = applyCommand(history.present, command);
-  if (next === history.present) return history;
   return {
     past: [...history.past, history.present].slice(-MAX_HISTORY),
     present: next,
