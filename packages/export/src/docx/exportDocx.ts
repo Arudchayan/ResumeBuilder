@@ -55,11 +55,6 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
           }),
         );
         break;
-      case "bullets":
-        for (const item of block.items) {
-          out.push(new Paragraph({ text: item, bullet: { level: 0 } }));
-        }
-        break;
       case "kv":
         out.push(
           new Paragraph({
@@ -144,9 +139,6 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
         }
         break;
       }
-      case "spacer":
-        out.push(new Paragraph({ text: "" }));
-        break;
       default: {
         const _exhaustive: never = block;
         void _exhaustive;
