@@ -56,49 +56,59 @@ function dateRange(start?: string, end?: string) {
 
 /** Classic sidebar: aside = photo/details/links/skills; main = identity + ordered content. */
 function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBlock[] } {
-  const aside: IrBlock[] = [];
-  const main: IrBlock[] = [];
+  return {
+    aside: buildColumn(doc, "aside"),
+    main: buildColumn(doc, "main"),
+  };
+}
 
-  if (visible(doc, "photo") && doc.photo.enabled && (doc.photo.dataUrl || doc.photo.url)) {
-    aside.push({ type: "photo", src: doc.photo.dataUrl || doc.photo.url, sectionId: "photo" });
-  }
+function buildColumn(doc: ResumeDocument, target: "aside" | "main"): IrBlock[] {
+  const blocks: IrBlock[] = [];
+  const push = (block: IrBlock) => blocks.push(block);
 
-  if (visible(doc, "contact")) {
-    aside.push({ type: "heading", level: 2, text: "Details", sectionId: "contact" });
-    if (doc.contact.location) {
-      aside.push({ type: "kv", label: "Location", value: doc.contact.location, sectionId: "contact" });
-    }
-    if (doc.contact.phone) {
-      aside.push({ type: "kv", label: "Phone", value: doc.contact.phone, sectionId: "contact" });
-    }
-    if (doc.contact.email) {
-      aside.push({ type: "kv", label: "Email", value: doc.contact.email, sectionId: "contact" });
+  if (target === "aside") {
+    if (visible(doc, "photo") && doc.photo.enabled && (doc.photo.dataUrl || doc.photo.url)) {
+      push({ type: "photo", src: doc.photo.dataUrl || doc.photo.url, sectionId: "photo" });
     }
 
-    const links = doc.links.filter((l) => l.url && l.label);
-    if (links.length) {
-      aside.push({ type: "heading", level: 2, text: "Links", sectionId: "contact" });
-      for (const link of links) {
-        aside.push({ type: "link", label: link.label, href: link.url, sectionId: "contact" });
+    if (visible(doc, "contact")) {
+      push({ type: "heading", level: 2, text: "Details", sectionId: "contact" });
+      if (doc.contact.location) {
+        push({ type: "kv", label: "Location", value: doc.contact.location, sectionId: "contact" });
+      }
+      if (doc.contact.phone) {
+        push({ type: "kv", label: "Phone", value: doc.contact.phone, sectionId: "contact" });
+      }
+      if (doc.contact.email) {
+        push({ type: "kv", label: "Email", value: doc.contact.email, sectionId: "contact" });
+      }
+
+      const links = doc.links.filter((l) => l.url && l.label);
+      if (links.length) {
+        push({ type: "heading", level: 2, text: "Links", sectionId: "contact" });
+        for (const link of links) {
+          push({ type: "link", label: link.label, href: link.url, sectionId: "contact" });
+        }
       }
     }
-  }
 
-  if (visible(doc, "skills") && doc.skills.length) {
-    aside.push({ type: "heading", level: 2, text: "Skills", sectionId: "skills" });
-    aside.push({ type: "chips", items: doc.skills, sectionId: "skills" });
+    if (visible(doc, "skills") && doc.skills.length) {
+      push({ type: "heading", level: 2, text: "Skills", sectionId: "skills" });
+      push({ type: "chips", items: doc.skills, sectionId: "skills" });
+    }
+    return blocks;
   }
 
   // Main column header (classic)
   if (visible(doc, "identity")) {
-    main.push({ type: "heading", level: 1, text: doc.name || "Your Name", sectionId: "identity" });
+    push({ type: "heading", level: 1, text: doc.name || "Your Name", sectionId: "identity" });
     if (doc.headline) {
-      main.push({ type: "paragraph", text: doc.headline, muted: true, sectionId: "identity" });
+      push({ type: "paragraph", text: doc.headline, muted: true, sectionId: "identity" });
     }
-    main.push({ type: "accentBar", sectionId: "identity" });
+    push({ type: "accentBar", sectionId: "identity" });
     if (doc.summary) {
-      main.push({ type: "heading", level: 2, text: "Profile", sectionId: "identity" });
-      main.push({ type: "paragraph", text: doc.summary, sectionId: "identity" });
+      push({ type: "heading", level: 2, text: "Profile", sectionId: "identity" });
+      push({ type: "paragraph", text: doc.summary, sectionId: "identity" });
     }
   }
 
@@ -110,9 +120,9 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
     switch (sectionId) {
       case "employment":
         if (!doc.jobs.length) break;
-        main.push({ type: "heading", level: 2, text: "Employment History", sectionId });
+        push({ type: "heading", level: 2, text: "Employment History", sectionId });
         for (const job of doc.jobs) {
-          main.push({
+          push({
             type: "entry",
             title: job.role,
             subtitle: [job.company, job.location].filter(Boolean).join(", "),
@@ -127,9 +137,9 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
         break;
       case "projects":
         if (!doc.projects.length) break;
-        main.push({ type: "heading", level: 2, text: "Projects", sectionId });
+        push({ type: "heading", level: 2, text: "Projects", sectionId });
         for (const p of doc.projects) {
-          main.push({
+          push({
             type: "entry",
             title: p.title,
             meta: dateRange(p.start, p.end),
@@ -144,9 +154,9 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
         break;
       case "edus":
         if (!doc.edus.length) break;
-        main.push({ type: "heading", level: 2, text: "Education", sectionId });
+        push({ type: "heading", level: 2, text: "Education", sectionId });
         for (const e of doc.edus) {
-          main.push({
+          push({
             type: "lineItem",
             text: `${e.degree}${e.school ? ` — ${e.school}` : ""}`,
             muted: e.when ? `(${e.when})` : undefined,
@@ -156,9 +166,9 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
         break;
       case "certs":
         if (!doc.certs.length) break;
-        main.push({ type: "heading", level: 2, text: "Certifications", sectionId });
+        push({ type: "heading", level: 2, text: "Certifications", sectionId });
         for (const c of doc.certs) {
-          main.push({
+          push({
             type: "lineItem",
             text: `${c.title}${c.org ? ` — ${c.org}` : ""}`,
             muted: c.when ? `(${c.when})` : undefined,
@@ -168,9 +178,9 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
         break;
       case "languages":
         if (!doc.languages.length) break;
-        main.push({ type: "heading", level: 2, text: "Languages", sectionId });
+        push({ type: "heading", level: 2, text: "Languages", sectionId });
         for (const lang of doc.languages) {
-          main.push({
+          push({
             type: "lineItem",
             text: lang.name,
             muted: lang.level ? `— ${lang.level}` : undefined,
@@ -180,9 +190,9 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
         break;
       case "publications":
         if (!doc.publications.length) break;
-        main.push({ type: "heading", level: 2, text: "Publications", sectionId });
+        push({ type: "heading", level: 2, text: "Publications", sectionId });
         for (const p of doc.publications) {
-          main.push({
+          push({
             type: "entry",
             title: p.title,
             subtitle: p.publisher,
@@ -194,9 +204,9 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
         break;
       case "awards":
         if (!doc.awards.length) break;
-        main.push({ type: "heading", level: 2, text: "Awards & Honors", sectionId });
+        push({ type: "heading", level: 2, text: "Awards & Honors", sectionId });
         for (const a of doc.awards) {
-          main.push({
+          push({
             type: "lineItem",
             text: `${a.title}${a.issuer ? ` — ${a.issuer}` : ""}`,
             muted: a.when ? `(${a.when})` : undefined,
@@ -209,15 +219,11 @@ function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBl
     }
   }
 
-  return { aside, main };
+  return blocks;
 }
 
 function buildSingleColumn(doc: ResumeDocument, compact: boolean): IrBlock[] {
-  const blocks: IrBlock[] = [];
-  if (visible(doc, "identity")) {
-    if (doc.name) blocks.push({ type: "heading", level: 1, text: doc.name, sectionId: "identity" });
-    if (doc.headline) blocks.push({ type: "paragraph", text: doc.headline, muted: true, sectionId: "identity" });
-  }
+  const blocks = buildColumn(doc, "main");
   if (visible(doc, "contact")) {
     const bits = [
       doc.contact.location,
@@ -226,34 +232,23 @@ function buildSingleColumn(doc: ResumeDocument, compact: boolean): IrBlock[] {
       ...doc.links.map((l) => l.url).filter(Boolean),
     ].filter(Boolean);
     if (bits.length) {
-      blocks.push({
-        type: "paragraph",
-        text: bits.join(compact ? " | " : " · "),
-        sectionId: "contact",
-      });
+      blocks.splice(
+        blocks.findIndex((b) => b.type === "heading" && b.level === 2),
+        0,
+        {
+          type: "paragraph",
+          text: bits.join(compact ? " | " : " · "),
+          sectionId: "contact",
+        },
+      );
     }
   }
-  if (visible(doc, "identity") && doc.summary) {
-    blocks.push({ type: "heading", level: 2, text: "Profile", sectionId: "identity" });
-    blocks.push({ type: "paragraph", text: doc.summary, sectionId: "identity" });
-  }
   if (visible(doc, "skills") && doc.skills.length) {
-    blocks.push({ type: "heading", level: 2, text: "Skills", sectionId: "skills" });
     blocks.push(
       compact
         ? { type: "paragraph", text: doc.skills.join(", "), sectionId: "skills" }
         : { type: "chips", items: doc.skills, sectionId: "skills" },
     );
-  }
-
-  const { main } = buildSidebarBlocks(doc);
-  for (const block of main) {
-    if (block.type === "heading" && block.level === 1) continue;
-    if (block.type === "accentBar") continue;
-    if (block.type === "paragraph" && block.muted && block.sectionId === "identity") continue;
-    if (block.type === "heading" && block.text === "Profile") continue;
-    if (block.type === "paragraph" && block.sectionId === "identity" && block.text === doc.summary) continue;
-    blocks.push(block);
   }
   return blocks;
 }
