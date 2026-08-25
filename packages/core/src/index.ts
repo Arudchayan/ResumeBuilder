@@ -7,8 +7,6 @@ export {
 
 export {
   SECTION_CONFIG,
-  getDefaultVisibility,
-  getDefaultSectionOrder,
   blankResume,
   type SectionId,
 } from "./schema/sections.js";
