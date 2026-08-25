@@ -137,11 +137,9 @@ export type TemplateId = (typeof TEMPLATE_IDS)[number];
 
 /** Map legacy template ids (e.g. "modern") onto current ones. */
 export function normalizeTemplateId(raw: unknown): TemplateId {
-  if (typeof raw === "string" && (TEMPLATE_IDS as readonly string[]).includes(raw)) {
-    return raw as TemplateId;
-  }
-  if (raw === "modern" || raw === "classic" || raw === "default") return "sidebar";
-  return "sidebar";
+  return typeof raw === "string" && (TEMPLATE_IDS as readonly string[]).includes(raw)
+    ? (raw as TemplateId)
+    : "sidebar";
 }
 
 export const resumeSchema = z.preprocess(
