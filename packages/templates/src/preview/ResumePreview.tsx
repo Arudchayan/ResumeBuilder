@@ -209,12 +209,7 @@ export function ResumePreview({
           width: `${paper.widthMm}mm`,
           minHeight: `${paper.heightMm}mm`,
           fontSize: `${fontScale}%`,
-          ...(isSidebar
-            ? {}
-            : {
-                padding: `${pad}px`,
-                ...(ir.templateId === "compact" ? {} : {}),
-              }),
+          ...(isSidebar ? {} : { padding: `${pad}px` }),
         }}
       >
         <PageBreakGuides
