@@ -38,6 +38,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { toast } from "sonner";
+import { downloadDocx } from "@resume/export";
 import { selectDoc, useAppStore } from "../lib/store";
 import { SectionEditor } from "../components/SectionEditor";
 
