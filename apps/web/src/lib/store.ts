@@ -5,7 +5,6 @@ import {
   dispatch,
   redo as redoHistory,
   undo as undoHistory,
-  replacePresent,
   sampleResume,
   type HistoryState,
   type ResumeCommand,
@@ -18,6 +17,7 @@ import {
   exportResumeJson,
   importResumeJson,
 } from "@resume/storage";
+import { downloadBlob } from "@resume/export";
 
 const library = new IndexedDbStorage();
 
@@ -31,7 +31,6 @@ interface AppState {
   zoom: number;
   dirty: boolean;
   lastSaved: number | null;
-  exporting: "pdf" | "docx" | "json" | null;
   modal: "about" | "privacy" | "shortcuts" | null;
   bootstrap: () => Promise<void>;
   setScreen: (screen: Screen) => void;
@@ -70,7 +69,6 @@ export const useAppStore = create<AppState>((set, get) => {
     zoom: 0.72,
     dirty: false,
     lastSaved: null,
-    exporting: null,
     modal: null,
 
     async bootstrap() {
@@ -157,7 +155,7 @@ export const useAppStore = create<AppState>((set, get) => {
     },
 
     loadDocument(doc) {
-      set({ history: replacePresent(get().history, doc), dirty: true });
+      set({ history: createHistory(doc), dirty: true });
       scheduleSave();
     },
 
@@ -182,13 +180,7 @@ export const useAppStore = create<AppState>((set, get) => {
 
     exportJson() {
       const json = exportResumeJson(get().history.present);
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "resume.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(new Blob([json], { type: "application/json" }), "resume.json");
     },
   };
 });

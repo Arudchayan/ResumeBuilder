@@ -186,7 +186,6 @@ export const resumeSchema = z.preprocess(
     sectionOrder: z.array(z.string()).nullable().optional().default(null),
     theme: z.string().optional().default("teal"),
     template: z.enum(TEMPLATE_IDS).optional().default("sidebar"),
-    customSections: z.array(z.unknown()).optional().default([]),
     updatedAt: z.number().optional().default(0),
   }),
 );
@@ -194,10 +193,6 @@ export const resumeSchema = z.preprocess(
 export type ResumeDocument = z.infer<typeof resumeSchema>;
 export type Job = z.infer<typeof jobSchema>;
 export type Project = z.infer<typeof projectSchema>;
-
-export function validateResumeData(data: unknown) {
-  return resumeSchema.safeParse(data);
-}
 
 export function parseResumeData(data: unknown): ResumeDocument {
   return resumeSchema.parse(data);

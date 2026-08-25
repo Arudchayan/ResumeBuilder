@@ -234,12 +234,16 @@ export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
   return Packer.toBlob(document);
 }
 
-export async function downloadDocx(doc: ResumeDocument, filename = "resume.docx") {
-  const blob = await exportDocxBlob(doc);
+export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function downloadDocx(doc: ResumeDocument, filename = "resume.docx") {
+  const blob = await exportDocxBlob(doc);
+  downloadBlob(blob, filename);
 }

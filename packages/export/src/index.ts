@@ -7,4 +7,4 @@ export {
   type PdfProgress,
   type ThemeColorSet,
 } from "./pdf/exportPdf.js";
-export { exportDocxBlob, downloadDocx } from "./docx/exportDocx.js";
+export { exportDocxBlob, downloadDocx, downloadBlob } from "./docx/exportDocx.js";

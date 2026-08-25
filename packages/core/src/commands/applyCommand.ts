@@ -11,7 +11,6 @@ export type ResumeCommand =
   | { type: "addArrayItem"; key: ArrayKey; item: unknown }
   | { type: "removeArrayItem"; key: ArrayKey; index: number }
   | { type: "updateArrayItem"; key: ArrayKey; index: number; item: unknown }
-  | { type: "reorderArray"; key: ArrayKey; from: number; to: number }
   | { type: "setSkills"; skills: string[] };
 
 export type ArrayKey =
@@ -72,12 +71,6 @@ export function applyCommand(doc: ResumeDocument, command: ResumeCommand): Resum
     case "updateArrayItem":
       (draft[command.key] as unknown[])[command.index] = command.item;
       break;
-    case "reorderArray": {
-      const arr = draft[command.key] as unknown[];
-      const [moved] = arr.splice(command.from, 1);
-      if (moved !== undefined) arr.splice(command.to, 0, moved);
-      break;
-    }
     case "setSkills":
       draft.skills = command.skills;
       break;

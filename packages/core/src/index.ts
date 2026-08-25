@@ -28,7 +28,6 @@ export {
   dispatch,
   undo,
   redo,
-  replacePresent,
   type HistoryState,
 } from "./history/history.js";
 
