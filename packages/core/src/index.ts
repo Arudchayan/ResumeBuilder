@@ -1,11 +1,8 @@
 export {
   parseResumeData,
   normalizeTemplateId,
-  TEMPLATE_IDS,
   type ResumeDocument,
   type TemplateId,
-  type Job,
-  type Project,
 } from "./schema/resume.js";
 
 export {

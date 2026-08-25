@@ -26,7 +26,6 @@ export type SheetPageMetrics = {
 };
 
 export type PageCrossing = {
-  sectionId: string;
   label: string;
   crossesPage: number;
 };
@@ -77,7 +76,6 @@ export function findPageCrossings(
     if (endPage > startPage) {
       seen.add(sectionId);
       crossings.push({
-        sectionId,
         label: el.dataset.sectionLabel || sectionId,
         crossesPage: startPage,
       });
