@@ -7,12 +7,11 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "pnpm --filter @resume/web dev",
-    "build": "pnpm --filter @resume/core build && pnpm --filter @resume/ui build && pnpm --filter @resume/storage build && pnpm --filter @resume/templates build && pnpm --filter @resume/export build && pnpm --filter @resume/web build",
+    "build": "pnpm --filter @resume/web build",
     "lint": "pnpm -r lint",
-    "pretest": "pnpm --filter @resume/core build && pnpm --filter @resume/ui build && pnpm --filter @resume/storage build && pnpm --filter @resume/templates build && pnpm --filter @resume/export build",
     "test": "vitest run",
     "test:e2e": "pnpm --filter @resume/web test:e2e",
-    "typecheck": "pnpm --filter @resume/core build && pnpm --filter @resume/ui build && pnpm --filter @resume/storage build && pnpm --filter @resume/templates build && pnpm --filter @resume/export build && pnpm --filter @resume/web typecheck"
+    "typecheck": "pnpm -r typecheck"
   },
   "keywords": [
     "resume",
