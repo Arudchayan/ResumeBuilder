@@ -16,7 +16,7 @@ export function Button({
   );
 }
 
-export function Label({
+function Label({
   htmlFor,
   children,
   className = "",
