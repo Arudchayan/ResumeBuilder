@@ -65,14 +65,6 @@ function BlockView({
           {block.text}
         </p>
       );
-    case "chips": {
-      const items = (block.items as string[]).map((s) => s.trim()).filter(Boolean);
-      return (
-        <div className="rb-section mt-1" {...sectionAttrs} {...clickable}>
-          <p className="skills-compact text-[11px] leading-snug text-slate-800">{items.join(" · ")}</p>
-        </div>
-      );
-    }
     case "kv":
       return (
         <div className="rb-keep my-2 text-[12px] text-slate-800" {...sectionAttrs} {...clickable}>

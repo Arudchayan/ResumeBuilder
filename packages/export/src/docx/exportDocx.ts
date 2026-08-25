@@ -47,14 +47,6 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
           }),
         );
         break;
-      case "chips":
-        out.push(
-          new Paragraph({
-            children: [new TextRun({ text: block.items.join(" · "), size: 18 })],
-            spacing: { after: 80 },
-          }),
-        );
-        break;
       case "kv":
         out.push(
           new Paragraph({

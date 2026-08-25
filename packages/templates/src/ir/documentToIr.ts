@@ -6,7 +6,6 @@ export type IrBlock =
   | { type: "heading"; level: 1 | 2 | 3; text: string; sectionId?: string }
   | { type: "accentBar"; sectionId?: string }
   | { type: "paragraph"; text: string; muted?: boolean; sectionId?: string }
-  | { type: "chips"; items: string[]; sectionId?: string }
   | { type: "kv"; label: string; value: string; sectionId?: string }
   | { type: "link"; label: string; href: string; sectionId?: string }
   | { type: "photo"; src: string; sectionId?: string }
@@ -94,7 +93,7 @@ function buildColumn(doc: ResumeDocument, target: "aside" | "main"): IrBlock[] {
 
     if (visible(doc, "skills") && doc.skills.length) {
       push({ type: "heading", level: 2, text: "Skills", sectionId: "skills" });
-      push({ type: "chips", items: doc.skills, sectionId: "skills" });
+      push({ type: "paragraph", text: doc.skills.join(" · "), sectionId: "skills" });
     }
     return blocks;
   }
@@ -244,11 +243,11 @@ function buildSingleColumn(doc: ResumeDocument, compact: boolean): IrBlock[] {
     }
   }
   if (visible(doc, "skills") && doc.skills.length) {
-    blocks.push(
-      compact
-        ? { type: "paragraph", text: doc.skills.join(", "), sectionId: "skills" }
-        : { type: "chips", items: doc.skills, sectionId: "skills" },
-    );
+    blocks.push({
+      type: "paragraph",
+      text: doc.skills.join(compact ? ", " : " · "),
+      sectionId: "skills",
+    });
   }
   return blocks;
 }
