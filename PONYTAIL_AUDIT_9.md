@@ -1,0 +1,14 @@
+# ponytail-audit 9 — ResumeBuilder
+
+1. `delete:` dependabot group patterns for dependencies the repo doesn't have (@emotion/\*, @radix-ui/\*, @testing-library/\*, jsdom, postcss, autoprefixer, eslint\*, husky, commitlint, lint-staged, cz-\*) — none exist in any manifest, groups can never match. Keep only react-vendor/build-tools/testing trimmed to real deps. [.github/dependabot.yml]
+2. `yagni:` entire skills-density feature — `skillsDensity` state, `setSkillsDensity`, effect sync, button highlight, and `defaultSkillsDensity`/`SkillsDensity` exports feed nothing: no renderer or IR path reads it, "Compact skills" changes only its own color. Delete state + helpers; keep or cut the button. [apps/web/src/pages/EditorPage.tsx:145,166,206,265,305,643,669, packages/templates/src/preview/layoutAssist.ts:3-8]
+3. `native:` duplicate `.skip-to-content` rules in ui and web stylesheets (identical position/focus blocks, both always loaded). Keep web's copy (loads last, wins); cut ui's. [packages/ui/src/styles.css:64-77, apps/web/src/styles.css:690]
+4. `shrink:` dual font systems — ui's hand-rolled `--font-body`/`.font-body`/manual `.font-display` sit beside Tailwind v4 `@theme { --font-sans, --font-display }` which already generates the same utilities. Drop ui's manual defs; point the body rule at `var(--font-sans)`. [packages/ui/src/styles.css:5-6,20-27, apps/web/src/styles.css:3-6]
+5. `yagni:` `IndexedDbStorage.create(template)` — one caller, 4 lines wrapping `blankResume` + own `save`. Inline `blankResume({ template })` + `save` in store.startBlank. [packages/storage/src/index.ts:100-105, apps/web/src/lib/store.ts:129]
+6. `delete:` `.rb-section > h3` print rule — no element emits class `rb-section` anywhere since the IR renderers landed. Nothing. [apps/web/src/styles.css:590-593]
+7. `delete:` dead types/un-exports — local `type SectionId` (never referenced), `export` on `resumeSchema` (only `parseResumeData` consumes it, not even re-barreled), `LayoutIr` barrel re-export (no external importer; export pkg takes `IrBlock` only). Un-export. [packages/core/src/schema/sections.ts:15, packages/core/src/schema/resume.ts:178, packages/templates/src/index.ts:4]
+8. `shrink:` GalleryPage's `t.id as TemplateId` casts ×2 + the `TemplateId` import — `TEMPLATES` is already `TemplateManifest[]` with `id: TemplateId`. Pass `t.id` bare. [apps/web/src/pages/GalleryPage.tsx:1,44,47]
+9. `shrink:` `migrateLegacyDraft` sets MIGRATED_FLAG in two branches — fold the empty-key branch into the try so the existing `finally` is the only setter. [packages/storage/src/index.ts:24-43]
+10. `shrink:` `PageBreakGuides` `visible` prop that early-returns null — render `{showPageGuides && <PageBreakGuides …/>}` at the one call site and drop the prop. [packages/templates/src/preview/PageBreakGuides.tsx:16,25, packages/templates/src/preview/ResumePreview.tsx:215-220]
+
+net: -85 lines, -0 deps possible.
