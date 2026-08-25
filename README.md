@@ -2,7 +2,7 @@
 
 A state-of-the-art, **local-first** resume builder: template gallery, section editor, live preview, and vector PDF / DOCX export from a shared layout model.
 
-**Stack:** React 19 · TypeScript · Vite 6 · Tailwind 4 · pnpm workspaces · Zod · IndexedDB · `@react-pdf/renderer` · Playwright
+**Stack:** React 19 · TypeScript · Vite 6 · Tailwind 4 · pnpm workspaces · Zod · IndexedDB · Playwright
 
 Live demo (GitHub Pages): configure `base` in `apps/web/vite.config.ts` to match your repo path (default `/ResumeBuilder/`).
 
@@ -12,11 +12,9 @@ Live demo (GitHub Pages): configure `base` in `apps/web/vite.config.ts` to match
 apps/web              UI (gallery + editor)
 packages/core         Schema, commands, history
 packages/templates    Layout IR + 3 templates + React preview
-packages/export       PDF / DOCX / JSON from IR
-packages/storage      StoragePort + IndexedDB + legacy migrator
-packages/ports        AuthPort / AiPort stubs for future SaaS
+packages/export       DOCX / JSON export from IR
+packages/storage      IndexedDB + legacy migrator
 packages/ui           Design tokens + primitives
-docs/architecture     Growth seams + delivery phases
 ```
 
 ## Quick start
@@ -46,10 +44,6 @@ pnpm build
 | `pnpm test` | Unit tests (all packages) |
 | `pnpm test:e2e` | Playwright smoke tests |
 | `pnpm typecheck` | TypeScript across workspace |
-
-## Documentation
-
-See `docs/architecture/ponytail-audit.md` for the simplification ledger.
 
 ## Migration from v1
 
