@@ -3,7 +3,7 @@ import { ensureSectionOrder } from "@resume/core";
 
 /** Intermediate representation shared by preview, DOCX, and print. */
 export type IrBlock =
-  | { type: "heading"; level: 1 | 2 | 3; text: string; sectionId?: string }
+  | { type: "heading"; level: 1 | 2; text: string; sectionId?: string }
   | { type: "accentBar"; sectionId?: string }
   | { type: "paragraph"; text: string; muted?: boolean; sectionId?: string }
   | { type: "kv"; label: string; value: string; sectionId?: string }

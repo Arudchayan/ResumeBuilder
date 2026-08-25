@@ -3,8 +3,6 @@ export {
   TEMPLATES,
   type LayoutIr,
   type IrBlock,
-  type IrColumn,
-  type TemplateManifest,
 } from "./ir/documentToIr.js";
 
 export { ResumePreview, TemplateThumb } from "./preview/ResumePreview.js";
@@ -16,7 +14,6 @@ export {
   suggestFitStep,
   type SheetPageMetrics,
   type PaperId,
-  type PaperPreset,
   type PageCrossing,
 } from "./preview/paper.js";
 export {
