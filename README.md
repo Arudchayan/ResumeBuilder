@@ -49,7 +49,6 @@ pnpm build
 
 ## Documentation
 
-- [Delivery phases (Phase 0–6 checklist)](docs/architecture/delivery-phases.md)
 - [SaaS growth seams (Phase B)](docs/architecture/saas-seams.md)
 
 ## Migration from v1
