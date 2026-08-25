@@ -17,7 +17,6 @@ export const PAPER_PRESETS = {
 } as const;
 
 export type PaperId = keyof typeof PAPER_PRESETS;
-export type PaperPreset = (typeof PAPER_PRESETS)[PaperId];
 
 export type SheetPageMetrics = {
   pages: number;
@@ -37,7 +36,7 @@ export type PageCrossing = {
  */
 export function measureSheetPages(
   sheet: HTMLElement,
-  paper: { widthMm: number; heightMm: number } = PAPER_PRESETS.a4,
+  paper: { widthMm: number; heightMm: number },
 ): SheetPageMetrics {
   const widthPx = Math.max(1, sheet.offsetWidth);
   const heightPx = Math.max(sheet.scrollHeight, sheet.offsetHeight, 1);
@@ -55,7 +54,7 @@ export function measureSheetPages(
 /** Find resume blocks that straddle a page boundary (for author warnings). */
 export function findPageCrossings(
   sheet: HTMLElement,
-  paper: { widthMm: number; heightMm: number } = PAPER_PRESETS.a4,
+  paper: { widthMm: number; heightMm: number },
 ): PageCrossing[] {
   const widthPx = Math.max(1, sheet.offsetWidth);
   const pageHeightPx = (paper.heightMm / paper.widthMm) * widthPx;
@@ -76,7 +75,7 @@ export function findPageCrossings(
     if (endPage > startPage) {
       seen.add(sectionId);
       crossings.push({
-        label: el.dataset.sectionLabel || sectionId,
+        label: sectionId,
         crossesPage: startPage,
       });
     }

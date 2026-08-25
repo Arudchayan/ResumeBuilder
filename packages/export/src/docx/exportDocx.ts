@@ -184,7 +184,7 @@ function buildSidebarTable(asideBlocks: IrBlock[], mainBlocks: IrBlock[]): Table
   });
 }
 
-export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
+async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
   const ir = documentToIr(doc);
   let children: (Paragraph | Table)[];
 

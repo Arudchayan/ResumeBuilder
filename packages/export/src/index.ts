@@ -1,1 +1,1 @@
-export { exportDocxBlob, downloadDocx, downloadBlob } from "./docx/exportDocx.js";
+export { downloadDocx, downloadBlob } from "./docx/exportDocx.js";

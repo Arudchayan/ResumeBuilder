@@ -17,7 +17,7 @@ describe("measureSheetPages", () => {
   it("counts a single A4 page when height matches width ratio", () => {
     const widthPx = (PAPER_PRESETS.a4.widthMm / 25.4) * 96;
     const heightPx = (PAPER_PRESETS.a4.heightMm / 25.4) * 96;
-    const metrics = measureSheetPages(fakeSheet(widthPx, heightPx));
+    const metrics = measureSheetPages(fakeSheet(widthPx, heightPx), PAPER_PRESETS.a4);
     expect(metrics.pages).toBe(1);
     expect(metrics.overflowMm).toBeLessThan(1);
   });
@@ -25,7 +25,7 @@ describe("measureSheetPages", () => {
   it("counts three pages for ~3× A4 height", () => {
     const widthPx = 794;
     const heightPx = 1123 * 3;
-    const metrics = measureSheetPages(fakeSheet(widthPx, heightPx));
+    const metrics = measureSheetPages(fakeSheet(widthPx, heightPx), PAPER_PRESETS.a4);
     expect(metrics.pages).toBe(3);
     expect(metrics.overflowMm).toBeGreaterThan(500);
   });

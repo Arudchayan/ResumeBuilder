@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 export const themes = {
   teal: {
     name: "Teal",
@@ -59,7 +61,7 @@ export const themes = {
 
 export type ThemeId = keyof typeof themes;
 
-export function themeCssVars(themeId: string): Record<string, string> {
+export function themeCssVars(themeId: string): CSSProperties {
   const theme = themes[themeId as ThemeId] ?? themes.teal;
   return {
     "--theme-primary": theme.primary,
@@ -67,5 +69,5 @@ export function themeCssVars(themeId: string): Record<string, string> {
     "--theme-surface": theme.surface,
     "--theme-gradient-from": theme.gradient[0],
     "--theme-gradient-to": theme.gradient[1],
-  };
+  } as CSSProperties;
 }

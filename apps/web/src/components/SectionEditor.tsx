@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ArrayKey, ResumeCommand, ResumeDocument } from "@resume/core";
+import { SECTION_CONFIG } from "@resume/core";
 import { Button, Field } from "@resume/ui";
 import { Plus, Trash2, Upload } from "lucide-react";
 
@@ -9,29 +10,20 @@ interface Props {
   apply: (command: ResumeCommand) => void;
 }
 
-const sectionCopy: Record<string, { title: string; description: string }> = {
-  identity: { title: "Identity", description: "Make the first impression clear: your name, positioning, and short profile." },
-  photo: { title: "Photo", description: "Add an optional professional photo for templates that support it." },
-  contact: { title: "Contact & links", description: "Give recruiters an easy way to reach you and find your work." },
-  skills: { title: "Skills", description: "Keep this focused on tools, methods, and strengths relevant to the role." },
-  employment: { title: "Employment", description: "Show impact with concise roles, dates, and evidence-led bullet points." },
-  projects: { title: "Projects", description: "Highlight selected work with the outcome, stack, and a useful link." },
-  certs: { title: "Certifications", description: "List credentials that add signal for the roles you are targeting." },
-  edus: { title: "Education", description: "Add degrees, institutions, and dates in the order you want them shown." },
-  languages: { title: "Languages", description: "Share languages and proficiency when they are relevant to the role." },
-  publications: { title: "Publications", description: "Add articles, papers, or other work that strengthens your profile." },
-  awards: { title: "Awards & honors", description: "Include meaningful recognition with the organization and date." },
-};
+function sectionMeta(sectionId: string) {
+  const meta = SECTION_CONFIG.find((s) => s.id === sectionId);
+  return meta ?? { label: sectionId, blurb: "Add the details you want to appear on your resume." };
+}
 
 function SectionIntro({ sectionId, count }: { sectionId: string; count?: number }) {
-  const copy = sectionCopy[sectionId] ?? { title: sectionId, description: "Add the details you want to appear on your resume." };
+  const meta = sectionMeta(sectionId);
   return (
     <div className="section-editor-heading">
       <div className="flex items-center justify-between gap-3">
-        <h2>{copy.title}</h2>
+        <h2>{meta.label}</h2>
         {count !== undefined ? <span className="section-count">{count} {count === 1 ? "item" : "items"}</span> : null}
       </div>
-      <p>{copy.description}</p>
+      <p>{meta.blurb}</p>
     </div>
   );
 }
@@ -245,7 +237,7 @@ function GenericListSection({ doc, sectionId, apply }: { doc: ResumeDocument; se
     <div className="section-editor">
       <SectionIntro sectionId={sectionId} count={items.length} />
       <ArrayEditor
-        title={sectionCopy[sectionId]?.title ?? sectionId}
+        title={sectionMeta(sectionId).label}
         items={items}
         onAdd={() => apply({ type: "addArrayItem", key, item: emptyItem(key) })}
         onRemove={(index) => apply({ type: "removeArrayItem", key, index })}

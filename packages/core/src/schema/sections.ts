@@ -1,18 +1,18 @@
 import type { ResumeDocument } from "../schema/resume.js";export const SECTION_CONFIG = [
-  { id: "identity", label: "Identity", required: true },
-  { id: "photo", label: "Photo", required: false },
-  { id: "contact", label: "Contact & Links", required: true },
-  { id: "skills", label: "Skills", required: false },
-  { id: "employment", label: "Employment", required: false },
-  { id: "projects", label: "Projects", required: false },
-  { id: "certs", label: "Certifications", required: false },
-  { id: "edus", label: "Education", required: false },
-  { id: "languages", label: "Languages", required: false },
-  { id: "publications", label: "Publications", required: false },
-  { id: "awards", label: "Awards & Honors", required: false },
+  { id: "identity", label: "Identity", required: true, blurb: "Make the first impression clear: your name, positioning, and short profile." },
+  { id: "photo", label: "Photo", required: false, blurb: "Add an optional professional photo for templates that support it." },
+  { id: "contact", label: "Contact & Links", required: true, blurb: "Give recruiters an easy way to reach you and find your work." },
+  { id: "skills", label: "Skills", required: false, blurb: "Keep this focused on tools, methods, and strengths relevant to the role." },
+  { id: "employment", label: "Employment", required: false, blurb: "Show impact with concise roles, dates, and evidence-led bullet points." },
+  { id: "projects", label: "Projects", required: false, blurb: "Highlight selected work with the outcome, stack, and a useful link." },
+  { id: "certs", label: "Certifications", required: false, blurb: "List credentials that add signal for the roles you are targeting." },
+  { id: "edus", label: "Education", required: false, blurb: "Add degrees, institutions, and dates in the order you want them shown." },
+  { id: "languages", label: "Languages", required: false, blurb: "Share languages and proficiency when they are relevant to the role." },
+  { id: "publications", label: "Publications", required: false, blurb: "Add articles, papers, or other work that strengthens your profile." },
+  { id: "awards", label: "Awards & Honors", required: false, blurb: "Include meaningful recognition with the organization and date." },
 ] as const;
 
-export type SectionId = (typeof SECTION_CONFIG)[number]["id"];
+type SectionId = (typeof SECTION_CONFIG)[number]["id"];
 
 export function getDefaultVisibility(): Record<string, boolean> {
   const visibility: Record<string, boolean> = {};

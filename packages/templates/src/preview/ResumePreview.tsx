@@ -1,4 +1,4 @@
-import type { CSSProperties, KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 import type { LayoutIr, IrBlock } from "../ir/documentToIr.js";
 import { themeCssVars } from "@resume/ui";
 import { PageBreakGuides } from "./PageBreakGuides.js";
@@ -28,7 +28,7 @@ function BlockView({
     : {};
 
   const sectionAttrs = block.sectionId
-    ? { "data-section": block.sectionId, "data-section-label": block.sectionId }
+    ? { "data-section": block.sectionId }
     : {};
 
   switch (block.type) {
@@ -175,7 +175,7 @@ export function ResumePreview({
 }) {
   const paper = PAPER_PRESETS[paperId] ?? PAPER_PRESETS.a4;
 
-  const vars = themeCssVars(ir.themeId) as CSSProperties;
+  const vars = themeCssVars(ir.themeId);
   const isSidebar = ir.templateId === "sidebar";
   const pad = contentPadding;
 

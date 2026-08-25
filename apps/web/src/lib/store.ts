@@ -180,7 +180,3 @@ export const useAppStore = create<AppState>((set, get) => {
     },
   };
 });
-
-export function selectDoc(s: AppState) {
-  return s.history.present;
-}

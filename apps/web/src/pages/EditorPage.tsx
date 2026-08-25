@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SECTION_CONFIG, ensureSectionOrder } from "@resume/core";
 import {
   PAPER_PRESETS,
@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadDocx } from "@resume/export";
-import { selectDoc, useAppStore } from "../lib/store";
+import { useAppStore } from "../lib/store";
 import { SectionEditor } from "../components/SectionEditor";
 
 function TocItem({
@@ -120,7 +120,7 @@ function formatSavedTime(timestamp: number | null) {
 }
 
 export function EditorPage() {
-  const doc = useAppStore(selectDoc);
+  const doc = useAppStore((s) => s.history.present);
   const apply = useAppStore((s) => s.apply);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
@@ -324,7 +324,7 @@ export function EditorPage() {
   };
 
   return (
-    <div className="workspace-page" style={cssVars as CSSProperties}>
+    <div className="workspace-page" style={cssVars}>
       <header className="workspace-header" role="banner">
         <div className="workspace-header-inner">
           <button type="button" className="brand-lockup" onClick={() => setScreen("gallery")}>

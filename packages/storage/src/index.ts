@@ -42,18 +42,16 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
     const doc = parseResumeData(parsed);
     const storage = new IndexedDbStorage();
     await storage.save(doc);
-    localStorage.setItem(MIGRATED_FLAG, "1");
     return doc;
   } catch {
-    localStorage.setItem(MIGRATED_FLAG, "1");
     return null;
+  } finally {
+    localStorage.setItem(MIGRATED_FLAG, "1");
   }
 }
 
 export type ResumeMeta = {
   id: string;
-  title: string;
-  template: string;
   updatedAt: number;
 };
 
@@ -93,8 +91,6 @@ export class IndexedDbStorage {
           rows
             .map((d) => ({
               id: d.id || "unknown",
-              title: d.name || "Untitled resume",
-              template: d.template,
               updatedAt: d.updatedAt || 0,
             }))
             .sort((a, b) => b.updatedAt - a.updatedAt),

@@ -8,7 +8,6 @@ export {
 export {
   SECTION_CONFIG,
   blankResume,
-  type SectionId,
 } from "./schema/sections.js";
 
 export {
