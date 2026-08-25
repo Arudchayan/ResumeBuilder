@@ -84,7 +84,7 @@ export const useAppStore = create<AppState>((set, get) => {
         return;
       }
       if (list[0]) {
-        const doc = await library.get(list[0].id);
+        const doc = await library.load(list[0].id);
         if (doc) {
           set({
             history: createHistory(doc),
