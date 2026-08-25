@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --config vitest.config.ts",
+    "test": "vitest run --config ../../vitest.config.ts --project web",
     "test:e2e": "playwright test"
   },
   "dependencies": {
