@@ -1,12 +1,4 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  type ButtonHTMLAttributes,
-  type InputHTMLAttributes,
-  type ReactNode,
-  type TextareaHTMLAttributes,
-} from "react";
+import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 
 export function Button({
   variant = "primary",
@@ -94,63 +86,33 @@ export function Dialog({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const panelRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
   useEffect(() => {
-    if (!open) return;
-    const prev = document.activeElement as HTMLElement | null;
-    const panel = panelRef.current;
-    const focusable = panel?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-    focusable?.[0]?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "Tab" && focusable && focusable.length > 0) {
-        const first = focusable[0]!;
-        const last = focusable[focusable.length - 1]!;
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-      prev?.focus?.();
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-900/40"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="relative z-10 max-h-[min(720px,calc(100dvh-2rem))] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-6"
-      >
-        <h2 id={titleId} className="font-display text-xl text-slate-900">
-          {title}
-        </h2>
-        <div className="mt-4 text-sm text-slate-600">{children}</div>
-      </div>
-    </div>
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onClose={onClose}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onClose();
+      }}
+      className="fixed inset-0 z-50 m-auto max-h-[min(720px,calc(100dvh-2rem))] w-full max-w-lg rounded-3xl bg-white p-5 text-sm text-slate-600 shadow-2xl backdrop:bg-slate-900/40 sm:p-6"
+    >
+      <h2 id={titleId} className="font-display text-xl text-slate-900">
+        {title}
+      </h2>
+      <div className="mt-4">{children}</div>
+    </dialog>
   );
 }
