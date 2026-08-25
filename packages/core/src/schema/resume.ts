@@ -189,8 +189,6 @@ export const resumeSchema = z.preprocess(
 );
 
 export type ResumeDocument = z.infer<typeof resumeSchema>;
-export type Job = z.infer<typeof jobSchema>;
-export type Project = z.infer<typeof projectSchema>;
 
 export function parseResumeData(data: unknown): ResumeDocument {
   return resumeSchema.parse(data);
