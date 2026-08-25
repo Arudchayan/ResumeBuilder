@@ -42,50 +42,49 @@ export function applyCommand(doc: ResumeDocument, command: ResumeCommand): Resum
   const draft = structuredClone(doc);
   draft.updatedAt = Date.now();
   switch (command.type) {
-      case "setField":
-        setByPath(draft as unknown as Record<string, unknown>, command.path, command.value);
-        break;
-      case "setDocument":
-        Object.assign(draft, command.document);
-        break;
-      case "reorderSections":
-        draft.sectionOrder = command.order;
-        break;
-      case "setSectionVisibility":
-        draft.sectionVisibility = {
-          ...draft.sectionVisibility,
-          [command.id]: command.visible,
-        };
-        break;
-      case "setTemplate":
-        draft.template = command.template;
-        break;
-      case "setTheme":
-        draft.theme = command.theme;
-        break;
-      case "addArrayItem":
-        (draft[command.key] as unknown[]).push(command.item);
-        break;
-      case "removeArrayItem":
-        (draft[command.key] as unknown[]).splice(command.index, 1);
-        break;
-      case "updateArrayItem":
-        (draft[command.key] as unknown[])[command.index] = command.item;
-        break;
-      case "reorderArray": {
-        const arr = draft[command.key] as unknown[];
-        const [moved] = arr.splice(command.from, 1);
-        if (moved !== undefined) arr.splice(command.to, 0, moved);
-        break;
-      }
-      case "setSkills":
-        draft.skills = command.skills;
-        break;
-      default: {
-        const _exhaustive: never = command;
-        void _exhaustive;
-        break;
-      }
+    case "setField":
+      setByPath(draft as unknown as Record<string, unknown>, command.path, command.value);
+      break;
+    case "setDocument":
+      Object.assign(draft, command.document);
+      break;
+    case "reorderSections":
+      draft.sectionOrder = command.order;
+      break;
+    case "setSectionVisibility":
+      draft.sectionVisibility = {
+        ...draft.sectionVisibility,
+        [command.id]: command.visible,
+      };
+      break;
+    case "setTemplate":
+      draft.template = command.template;
+      break;
+    case "setTheme":
+      draft.theme = command.theme;
+      break;
+    case "addArrayItem":
+      (draft[command.key] as unknown[]).push(command.item);
+      break;
+    case "removeArrayItem":
+      (draft[command.key] as unknown[]).splice(command.index, 1);
+      break;
+    case "updateArrayItem":
+      (draft[command.key] as unknown[])[command.index] = command.item;
+      break;
+    case "reorderArray": {
+      const arr = draft[command.key] as unknown[];
+      const [moved] = arr.splice(command.from, 1);
+      if (moved !== undefined) arr.splice(command.to, 0, moved);
+      break;
+    }
+    case "setSkills":
+      draft.skills = command.skills;
+      break;
+    default: {
+      const _exhaustive: never = command;
+      void _exhaustive;
+      break;
     }
   }
   return draft;

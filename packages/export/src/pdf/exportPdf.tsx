@@ -133,6 +133,17 @@ function styleFullClone(
  * WYSIWYG PDF: capture the full sheet once, then slice into paper-sized pages.
  * Keeps sidebar + main continuous across pages (no cleared aside).
  */
+export async function exportPdfBlob(
+  sheetRoot: HTMLElement,
+  options: PdfExportOptions = {},
+): Promise<Blob> {
+  return exportPdfFromSheet(sheetRoot, options);
+}
+
+/**
+ * WYSIWYG PDF: capture the full sheet once, then slice into paper-sized pages.
+ * Keeps sidebar + main continuous across pages (no cleared aside).
+ */
 export async function exportPdfFromSheet(
   sheetRoot: HTMLElement,
   options: PdfExportOptions = {},
@@ -235,118 +246,6 @@ export async function exportPdfFromSheet(
   } finally {
     temp.remove();
   }
-}
-
-function stylesFor(themeId: string) {
-  const theme = themes[themeId as ThemeId] ?? themes.teal;
-  return StyleSheet.create({
-    page: { padding: 28, fontSize: 10, fontFamily: "Helvetica", color: "#0f172a" },
-    h1: { fontSize: 20, fontFamily: "Helvetica-Bold", marginBottom: 4 },
-    h2: {
-      fontSize: 9,
-      fontFamily: "Helvetica-Bold",
-      color: theme.dark,
-      textTransform: "uppercase",
-      letterSpacing: 1.2,
-      marginTop: 10,
-      marginBottom: 4,
-    },
-    p: { fontSize: 10, lineHeight: 1.4, marginBottom: 4 },
-    muted: { fontSize: 11, color: theme.dark, marginBottom: 6, fontFamily: "Helvetica-Bold" },
-  });
-}
-
-function stylesFor(themeId: string) {
-  return (
-    <>
-      {blocks.map((block, i) => {
-        const key = `${block.type}-${i}`;
-        switch (block.type) {
-          case "heading":
-            return (
-              <Text key={key} style={block.level === 1 ? s.h1 : s.h2} wrap={false}>
-                {block.text}
-              </Text>
-            );
-          case "paragraph":
-            return (
-              <Text key={key} style={block.muted ? s.muted : s.p}>
-                {block.text}
-              </Text>
-            );
-          case "chips":
-            return (
-              <Text key={key} style={s.p}>
-                {block.items.join(" · ")}
-              </Text>
-            );
-          case "bullets":
-            return (
-              <View key={key} wrap={false}>
-                {block.items.map((item, idx) => (
-                  <Text key={idx} style={s.p}>
-                    • {item}
-                  </Text>
-                ))}
-              </View>
-            );
-          case "kv":
-          case "link":
-            return (
-              <Text key={key} style={s.p}>
-                {"label" in block ? `${block.label}: ` : ""}
-                {"value" in block ? block.value : "href" in block ? block.href : ""}
-              </Text>
-            );
-          case "lineItem":
-            return (
-              <Text key={key} style={s.p} wrap={false}>
-                {block.text} {block.muted || ""}
-              </Text>
-            );
-          case "entry":
-            return (
-              <View key={key} style={{ marginBottom: 6 }} wrap={false}>
-                <Text style={{ fontFamily: "Helvetica-Bold" }}>{block.title}</Text>
-                {block.subtitle ? <Text style={s.p}>{block.subtitle}</Text> : null}
-                {block.meta ? <Text style={s.p}>{block.meta}</Text> : null}
-                {block.url ? (
-                  <Link src={block.url} style={{ fontSize: 8, color: "#0f766e" }}>
-                    {block.url}
-                  </Link>
-                ) : null}
-                {block.subsections?.map((sec, idx) => (
-                  <View key={idx}>
-                    {sec.title ? (
-                      <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 10 }}>{sec.title}</Text>
-                    ) : null}
-                    {sec.bullets.map((line, j) => (
-                      <Text key={j} style={s.p}>
-                        • {line}
-                      </Text>
-                    ))}
-                  </View>
-                ))}
-                {block.body?.map((line, idx) => (
-                  <Text key={idx} style={s.p}>
-                    {line}
-                  </Text>
-                ))}
-              </View>
-            );
-          case "accentBar":
-          case "photo":
-          case "spacer":
-            return <View key={key} style={{ height: 6 }} />;
-          default: {
-            const _exhaustive: never = block;
-            void _exhaustive;
-            return null;
-          }
-        }
-      })}
-    </>
-  );
 }
 
 function downloadBlob(blob: Blob, filename: string) {
