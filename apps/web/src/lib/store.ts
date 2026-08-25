@@ -13,7 +13,7 @@ import {
   type TemplateId,
 } from "@resume/core";
 import { IndexedDbStorage, migrateLegacyDraft } from "@resume/storage";
-import { downloadBlob } from "@resume/export";
+import { downloadBlob, downloadDocx } from "@resume/export";
 
 const library = new IndexedDbStorage();
 

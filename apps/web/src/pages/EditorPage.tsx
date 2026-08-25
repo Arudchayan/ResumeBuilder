@@ -238,7 +238,6 @@ export function EditorPage() {
   const runExport = async (kind: "pdf" | "docx") => {
     setExporting(kind);
     try {
-      const { downloadDocx } = await import("@resume/export");
       const filename = (doc.name || "resume").trim().replace(/\s+/g, "_") || "resume";
       if (kind === "pdf") {
         window.print();
