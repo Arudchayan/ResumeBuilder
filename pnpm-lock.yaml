@@ -90,9 +90,6 @@ importers:
       '@resume/templates':
         specifier: workspace:*
         version: link:../templates
-      '@resume/ui':
-        specifier: workspace:*
-        version: link:../ui
       docx:
         specifier: ^9.5.1
         version: 9.7.1
@@ -138,15 +135,9 @@ importers:
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
-      '@types/react-dom':
-        specifier: ^19.2.4
-        version: 19.2.4(@types/react@19.2.18)
       react:
         specifier: ^19.2.8
         version: 19.2.8
-      react-dom:
-        specifier: ^19.2.8
-        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -159,15 +150,9 @@ importers:
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
-      '@types/react-dom':
-        specifier: ^19.2.4
-        version: 19.2.4(@types/react@19.2.18)
       react:
         specifier: ^19.2.8
         version: 19.2.8
-      react-dom:
-        specifier: ^19.2.8
-        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

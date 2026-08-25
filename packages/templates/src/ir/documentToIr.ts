@@ -49,14 +49,6 @@ function dateRange(start?: string, end?: string) {
   return [start, end].filter(Boolean).join(" — ");
 }
 
-/** Classic sidebar: aside = photo/details/links/skills; main = identity + ordered content. */
-function buildSidebarBlocks(doc: ResumeDocument): { aside: IrBlock[]; main: IrBlock[] } {
-  return {
-    aside: buildColumn(doc, "aside"),
-    main: buildColumn(doc, "main"),
-  };
-}
-
 function buildColumn(doc: ResumeDocument, target: "aside" | "main"): IrBlock[] {
   const blocks: IrBlock[] = [];
   const push = (block: IrBlock) => blocks.push(block);
@@ -252,13 +244,12 @@ export function documentToIr(doc: ResumeDocument): LayoutIr {
   const templateId = doc.template;
 
   if (templateId === "sidebar") {
-    const { aside, main } = buildSidebarBlocks(doc);
     return {
       templateId,
       themeId: doc.theme,
       columns: [
-        { id: "aside", blocks: aside },
-        { id: "main", blocks: main },
+        { id: "aside", blocks: buildColumn(doc, "aside") },
+        { id: "main", blocks: buildColumn(doc, "main") },
       ],
     };
   }

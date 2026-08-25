@@ -325,10 +325,6 @@ export function EditorPage() {
 
   return (
     <div className="workspace-page" style={cssVars as CSSProperties}>
-      <a href="#main" className="skip-to-content">
-        Skip to editor
-      </a>
-
       <header className="workspace-header" role="banner">
         <div className="workspace-header-inner">
           <button type="button" className="brand-lockup" onClick={() => setScreen("gallery")}>

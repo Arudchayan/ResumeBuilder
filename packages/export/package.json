@@ -9,15 +9,11 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "lint": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@resume/core": "workspace:*",
     "@resume/templates": "workspace:*",
-    "@resume/ui": "workspace:*",
     "docx": "^9.5.1"
   },
   "devDependencies": {
