@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { PAPER_PRESETS } from "./paper.js";
 
 /**
@@ -22,49 +23,44 @@ export function PageBreakGuides({
 
   return (
     <>
-      {edges.map((pageNumber) => (
-        <div
-          key={`band-${pageNumber}`}
-          className={`page-band ${pageNumber % 2 === 0 ? "is-alt" : ""}`}
-          data-page-band={pageNumber}
-          style={{
-            top: `${(pageNumber - 1) * pageHeightMm}mm`,
-            height: `${pageHeightMm}mm`,
-            width: `${pageWidthMm}mm`,
-          }}
-          aria-hidden="true"
-        />
-      ))}
       {edges.map((pageNumber) => {
         const isLast = pageNumber === safePages;
-        const label =
-          safePages === 1
-            ? `Page ends (${pageHeightMm} mm)`
-            : isLast
-              ? `Page ${pageNumber} ends · PDF bottom`
-              : `Page ${pageNumber} ends · page ${pageNumber + 1} starts`;
         return (
-          <div
-            key={pageNumber}
-            className="page-break-indicator"
-            data-page-edge={pageNumber}
-            style={{ top: `${pageNumber * pageHeightMm}mm` }}
-            aria-hidden="true"
-          >
-            <span className="page-break-label">{label}</span>
-          </div>
+          <Fragment key={pageNumber}>
+            <div
+              className={`page-band ${pageNumber % 2 === 0 ? "is-alt" : ""}`}
+              data-page-band={pageNumber}
+              style={{
+                top: `${(pageNumber - 1) * pageHeightMm}mm`,
+                height: `${pageHeightMm}mm`,
+                width: `${pageWidthMm}mm`,
+              }}
+              aria-hidden="true"
+            />
+            <div
+              className="page-break-indicator"
+              data-page-edge={pageNumber}
+              style={{ top: `${pageNumber * pageHeightMm}mm` }}
+              aria-hidden="true"
+            >
+              <span className="page-break-label">
+                {safePages === 1
+                  ? `Page ends (${pageHeightMm} mm)`
+                  : isLast
+                    ? `Page ${pageNumber} ends · PDF bottom`
+                    : `Page ${pageNumber} ends · page ${pageNumber + 1} starts`}
+              </span>
+            </div>
+            <div
+              className="page-number-badge"
+              style={{ top: `calc(${(pageNumber - 1) * pageHeightMm}mm + 8px)` }}
+              aria-hidden="true"
+            >
+              {pageNumber}/{safePages}
+            </div>
+          </Fragment>
         );
       })}
-      {Array.from({ length: safePages }, (_, index) => (
-        <div
-          key={`badge-${index + 1}`}
-          className="page-number-badge"
-          style={{ top: `calc(${index * pageHeightMm}mm + 8px)` }}
-          aria-hidden="true"
-        >
-          {index + 1}/{safePages}
-        </div>
-      ))}
     </>
   );
 }
