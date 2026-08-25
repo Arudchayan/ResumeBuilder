@@ -14,17 +14,12 @@ import {
 } from "@resume/core";
 import {
   IndexedDbStorage,
-  LocalResumeLibrary,
   migrateLegacyDraft,
   exportResumeJson,
   importResumeJson,
 } from "@resume/storage";
-import { DisabledAiPort, NullAuthPort } from "@resume/ports";
 
-const storage = new IndexedDbStorage();
-const library = new LocalResumeLibrary(storage);
-export const authPort = new NullAuthPort();
-export const aiPort = new DisabledAiPort();
+const library = new IndexedDbStorage();
 
 type Screen = "gallery" | "editor";
 
