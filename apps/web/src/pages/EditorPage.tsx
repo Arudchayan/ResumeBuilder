@@ -166,11 +166,6 @@ export function EditorPage() {
     setSkillsDensity(defaultSkillsDensity(doc));
   }, [doc.id, doc.skills?.length]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
   const fitPreview = () => {
     const host = previewHostRef.current;
     if (!host) return;
