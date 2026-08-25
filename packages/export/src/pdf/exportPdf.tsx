@@ -1,18 +1,6 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
-import { saveAs } from "file-saver";
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  pdf,
-  Link,
-} from "@react-pdf/renderer";
 import type { ResumeDocument } from "@resume/core";
-import { documentToIr, type IrBlock } from "@resume/templates";
-import { themes, type ThemeId } from "@resume/ui";
 
 export type PdfProgress = {
   phase: "prepare" | "capture" | "render";
@@ -268,7 +256,7 @@ function stylesFor(themeId: string) {
   });
 }
 
-function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof stylesFor> }) {
+function stylesFor(themeId: string) {
   return (
     <>
       {blocks.map((block, i) => {
@@ -361,54 +349,13 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
   );
 }
 
-async function exportPdfFromIr(
-  doc: ResumeDocument,
-  options: PdfExportOptions = {},
-): Promise<Blob> {
-  const ir = documentToIr(doc);
-  const s = stylesFor(ir.themeId);
-  const page = ir.pages[0];
-  const widthMm = options.widthMm ?? ir.paper.widthMm;
-  const heightMm = options.heightMm ?? ir.paper.heightMm;
-  const blocks =
-    ir.templateId === "sidebar"
-      ? [
-          ...(page?.columns.find((c) => c.id === "main")?.blocks ?? []),
-          ...(page?.columns.find((c) => c.id === "aside")?.blocks ?? []),
-        ]
-      : (page?.columns.flatMap((c) => c.blocks) ?? []);
-
-  const instance = pdf(
-    <Document>
-      <Page size={[widthMm, heightMm]} style={s.page} wrap>
-        <PdfBlocks blocks={blocks} s={s} />
-      </Page>
-    </Document>,
-  );
-  return instance.toBlob();
-}
-
-export async function exportPdfBlob(
-  doc: ResumeDocument,
-  sheetRoot?: HTMLElement | null,
-  options: PdfExportOptions = {},
-): Promise<Blob> {
-  const root = sheetRoot ?? document.querySelector<HTMLElement>(".sheet");
-  // Prefer live sheet capture for every template (true WYSIWYG).
-  if (root) {
-    try {
-      return await exportPdfFromSheet(root, { name: doc.name, ...options });
-    } catch (error) {
-      console.warn("Sheet PDF capture failed; falling back to vector PDF", error);
-      options.onProgress?.({
-        phase: "render",
-        current: 1,
-        total: 1,
-        message: "Using vector fallback…",
-      });
-    }
-  }
-  return exportPdfFromIr(doc, options);
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function downloadPdf(
@@ -422,5 +369,5 @@ export async function downloadPdf(
     sheetRoot ?? document.querySelector<HTMLElement>(".sheet"),
     options,
   );
-  saveAs(blob, filename);
+  downloadBlob(blob, filename);
 }

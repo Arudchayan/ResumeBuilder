@@ -1,4 +1,3 @@
-import { produce } from "immer";
 import type { ResumeDocument } from "../schema/resume.js";
 import { getDefaultSectionOrder } from "../schema/sections.js";
 
@@ -40,9 +39,9 @@ function setByPath(obj: Record<string, unknown>, path: string, value: unknown) {
 }
 
 export function applyCommand(doc: ResumeDocument, command: ResumeCommand): ResumeDocument {
-  return produce(doc, (draft) => {
-    draft.updatedAt = Date.now();
-    switch (command.type) {
+  const draft = structuredClone(doc);
+  draft.updatedAt = Date.now();
+  switch (command.type) {
       case "setField":
         setByPath(draft as unknown as Record<string, unknown>, command.path, command.value);
         break;
@@ -88,7 +87,8 @@ export function applyCommand(doc: ResumeDocument, command: ResumeCommand): Resum
         break;
       }
     }
-  });
+  }
+  return draft;
 }
 
 export function ensureSectionOrder(doc: ResumeDocument): string[] {

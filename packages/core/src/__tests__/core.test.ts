@@ -6,22 +6,22 @@ import {
   dispatch,
   undo,
   redo,
-  validateResumeData,
+  parseResumeData,
 } from "../index.js";
 
 describe("resumeSchema", () => {
   it("accepts blank resume", () => {
-    const result = validateResumeData(blankResume());
-    expect(result.success).toBe(true);
+    expect(() => parseResumeData(blankResume())).not.toThrow();
   });
 
   it("rejects invalid email", () => {
-    const result = validateResumeData(blankResume({ contact: { email: "nope", phone: "", location: "" } }));
-    expect(result.success).toBe(false);
+    expect(() =>
+      parseResumeData(blankResume({ contact: { email: "nope", phone: "", location: "" } })),
+    ).toThrow();
   });
 
   it("imports legacy modern template and array tech", () => {
-    const result = validateResumeData({
+    const doc = parseResumeData({
       name: "Ada",
       template: "modern",
       contact: { email: "a@b.com", phone: "", location: "" },
@@ -34,13 +34,10 @@ describe("resumeSchema", () => {
         },
       ],
     });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.template).toBe("sidebar");
-      expect(result.data.projects[0]?.tech).toBe("Python, Spark");
-      expect(result.data.projects[0]?.start).toBe("Mar 2024");
-      expect(result.data.projects[0]?.end).toBe("Aug 2024");
-    }
+    expect(doc.template).toBe("sidebar");
+    expect(doc.projects[0]?.tech).toBe("Python, Spark");
+    expect(doc.projects[0]?.start).toBe("Mar 2024");
+    expect(doc.projects[0]?.end).toBe("Aug 2024");
   });
 });
 

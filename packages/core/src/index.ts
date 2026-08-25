@@ -1,6 +1,4 @@
 export {
-  resumeSchema,
-  validateResumeData,
   parseResumeData,
   normalizeTemplateId,
   TEMPLATE_IDS,
@@ -14,7 +12,6 @@ export {
   SECTION_CONFIG,
   getDefaultVisibility,
   getDefaultSectionOrder,
-  isSectionEmpty,
   blankResume,
   type SectionId,
 } from "./schema/sections.js";
