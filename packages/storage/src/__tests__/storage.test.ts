@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { blankResume } from "@resume/core";
+import { blankResume, parseResumeData } from "@resume/core";
 import { IndexedDbStorage, parseResumeData } from "../index.js";
 
 describe("IndexedDbStorage", () => {
