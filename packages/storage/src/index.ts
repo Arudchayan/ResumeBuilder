@@ -38,7 +38,7 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     delete parsed._savedAt;
     parsed.template = normalizeTemplateId(parsed.template);
-    if (!parsed.id) parsed.id = crypto.randomUUID?.() ?? `migrated-${Date.now()}`;
+    if (!parsed.id) parsed.id = crypto.randomUUID();
     const doc = parseResumeData(parsed);
     const storage = new IndexedDbStorage();
     await storage.save(doc);

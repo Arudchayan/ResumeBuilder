@@ -28,7 +28,7 @@ export function getDefaultSectionOrder(): string[] {
 
 export function blankResume(overrides: Partial<ResumeDocument> = {}): ResumeDocument {
   return {
-    id: crypto.randomUUID?.() ?? `local-${Date.now()}`,
+    id: crypto.randomUUID(),
     name: "",
     headline: "",
     summary: "",
