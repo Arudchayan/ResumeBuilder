@@ -174,7 +174,7 @@ export function SectionEditor({ doc, sectionId, apply }: Props) {
       return (
         <div className="section-editor">
           <SectionIntro sectionId={sectionId} count={doc.skills.length} />
-          <SkillChips skills={doc.skills} onChange={(skills) => apply({ type: "setSkills", skills })} />
+          <SkillChips skills={doc.skills} onChange={(skills) => apply({ type: "setField", path: "skills", value: skills })} />
         </div>
       );
 

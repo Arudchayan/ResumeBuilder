@@ -59,8 +59,9 @@ describe("commands + history", () => {
 
   it("reorders sections", () => {
     const doc = applyCommand(blankResume(), {
-      type: "reorderSections",
-      order: ["skills", "identity", "contact"],
+      type: "setField",
+      path: "sectionOrder",
+      value: ["skills", "identity", "contact"],
     });
     expect(doc.sectionOrder?.[0]).toBe("skills");
   });

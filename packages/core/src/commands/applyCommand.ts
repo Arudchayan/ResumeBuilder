@@ -4,14 +4,9 @@ import { getDefaultSectionOrder } from "../schema/sections.js";
 export type ResumeCommand =
   | { type: "setField"; path: string; value: unknown }
   | { type: "setDocument"; document: ResumeDocument }
-  | { type: "reorderSections"; order: string[] }
-  | { type: "setSectionVisibility"; id: string; visible: boolean }
-  | { type: "setTemplate"; template: ResumeDocument["template"] }
-  | { type: "setTheme"; theme: string }
   | { type: "addArrayItem"; key: ArrayKey; item: unknown }
   | { type: "removeArrayItem"; key: ArrayKey; index: number }
-  | { type: "updateArrayItem"; key: ArrayKey; index: number; item: unknown }
-  | { type: "setSkills"; skills: string[] };
+  | { type: "updateArrayItem"; key: ArrayKey; index: number; item: unknown };
 
 export type ArrayKey =
   | "links"
@@ -47,21 +42,6 @@ export function applyCommand(doc: ResumeDocument, command: ResumeCommand): Resum
     case "setDocument":
       Object.assign(draft, command.document);
       break;
-    case "reorderSections":
-      draft.sectionOrder = command.order;
-      break;
-    case "setSectionVisibility":
-      draft.sectionVisibility = {
-        ...draft.sectionVisibility,
-        [command.id]: command.visible,
-      };
-      break;
-    case "setTemplate":
-      draft.template = command.template;
-      break;
-    case "setTheme":
-      draft.theme = command.theme;
-      break;
     case "addArrayItem":
       (draft[command.key] as unknown[]).push(command.item);
       break;
@@ -70,9 +50,6 @@ export function applyCommand(doc: ResumeDocument, command: ResumeCommand): Resum
       break;
     case "updateArrayItem":
       (draft[command.key] as unknown[])[command.index] = command.item;
-      break;
-    case "setSkills":
-      draft.skills = command.skills;
       break;
     default: {
       const _exhaustive: never = command;

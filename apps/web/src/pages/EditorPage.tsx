@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { SECTION_CONFIG, ensureSectionOrder, type ResumeDocument } from "@resume/core";
+import { SECTION_CONFIG, ensureSectionOrder } from "@resume/core";
 import {
   PAPER_PRESETS,
   applyOnePageVisibility,
@@ -233,7 +233,7 @@ export function EditorPage() {
     const [moved] = next.splice(from, 1);
     if (moved === undefined) return;
     next.splice(to, 0, moved);
-    apply({ type: "reorderSections", order: next });
+    apply({ type: "setField", path: "sectionOrder", value: next });
   };
 
   const runExport = async (kind: "pdf" | "docx") => {
@@ -461,9 +461,9 @@ export function EditorPage() {
                     }}
                     onToggleVisible={() =>
                       apply({
-                        type: "setSectionVisibility",
-                        id,
-                        visible: !isVisible,
+                        type: "setField",
+                        path: `sectionVisibility.${id}`,
+                        value: !isVisible,
                       })
                     }
                     onMove={(direction) => moveSection(id, direction)}
@@ -480,7 +480,7 @@ export function EditorPage() {
                   id="theme-select"
                   className="select-control w-full rounded-xl border bg-white px-3 py-2 text-sm"
                   value={doc.theme}
-                  onChange={(event) => apply({ type: "setTheme", theme: event.target.value })}
+                  onChange={(event) => apply({ type: "setField", path: "theme", value: event.target.value })}
                 >
                   <option value="teal">Teal</option>
                   <option value="blue">Professional Blue</option>
@@ -498,9 +498,7 @@ export function EditorPage() {
                   id="template-select"
                   className="select-control w-full rounded-xl border bg-white px-3 py-2 text-sm"
                   value={doc.template}
-                  onChange={(event) =>
-                    apply({ type: "setTemplate", template: event.target.value as ResumeDocument["template"] })
-                  }
+                  onChange={(event) => apply({ type: "setField", path: "template", value: event.target.value })}
                 >
                   {TEMPLATES.map((template) => (
                     <option key={template.id} value={template.id}>
