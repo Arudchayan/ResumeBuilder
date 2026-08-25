@@ -3,9 +3,7 @@ import {
   parseResumeData,
   normalizeTemplateId,
   type ResumeDocument,
-  type TemplateId,
 } from "@resume/core";
-import type { ResumeLibraryPort, ResumeMeta, StoragePort } from "@resume/ports";
 
 const DB_NAME = "resume-builder-v2";
 const STORE = "resumes";
@@ -52,7 +50,14 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
   }
 }
 
-export class IndexedDbStorage implements StoragePort {
+export type ResumeMeta = {
+  id: string;
+  title: string;
+  template: string;
+  updatedAt: number;
+};
+
+export class IndexedDbStorage {
   async load(id: string): Promise<ResumeDocument | null> {
     const db = await openDb();
     return new Promise((resolve, reject) => {
@@ -108,45 +113,11 @@ export class IndexedDbStorage implements StoragePort {
       tx.onerror = () => reject(tx.error);
     });
   }
-}
 
-export class LocalResumeLibrary implements ResumeLibraryPort {
-  constructor(private storage: StoragePort = new IndexedDbStorage()) {}
-
-  list() {
-    return this.storage.list();
-  }
-
-  async create(template = "sidebar") {
-    const doc = blankResume({
-      template: normalizeTemplateId(template),
-    });
-    await this.storage.save(doc);
+  async create(template = "sidebar"): Promise<ResumeDocument> {
+    const doc = blankResume({ template: normalizeTemplateId(template) });
+    await this.save(doc);
     return doc;
-  }
-
-  get(id: string) {
-    return this.storage.load(id);
-  }
-
-  save(doc: ResumeDocument) {
-    return this.storage.save(doc);
-  }
-
-  async duplicate(id: string) {
-    const existing = await this.storage.load(id);
-    if (!existing) throw new Error("Resume not found");
-    const copy = blankResume({
-      ...existing,
-      id: crypto.randomUUID?.() ?? `copy-${Date.now()}`,
-      name: existing.name ? `${existing.name} (copy)` : "Untitled resume (copy)",
-    });
-    await this.storage.save(copy);
-    return copy;
-  }
-
-  delete(id: string) {
-    return this.storage.delete(id);
   }
 }
 
@@ -157,29 +128,4 @@ export function exportResumeJson(doc: ResumeDocument): string {
 export function importResumeJson(raw: string): ResumeDocument {
   const parsed = JSON.parse(raw) as unknown;
   return parseResumeData(parsed);
-}
-
-/** In-memory adapter for tests / SSR. */
-export class MemoryStorage implements StoragePort {
-  private map = new Map<string, ResumeDocument>();
-
-  async load(id: string) {
-    return this.map.get(id) ?? null;
-  }
-  async save(doc: ResumeDocument) {
-    this.map.set(doc.id, { ...doc, updatedAt: Date.now() });
-  }
-  async list(): Promise<ResumeMeta[]> {
-    return [...this.map.values()]
-      .map((d) => ({
-        id: d.id,
-        title: d.name || "Untitled resume",
-        template: d.template,
-        updatedAt: d.updatedAt || 0,
-      }))
-      .sort((a, b) => b.updatedAt - a.updatedAt);
-  }
-  async delete(id: string) {
-    this.map.delete(id);
-  }
 }

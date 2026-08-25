@@ -1,7 +1,6 @@
 export {
-  exportPdfBlob,
-  downloadPdf,
   exportPdfFromSheet,
+  downloadPdf,
   resolveThemeColors,
   pickThemeColors,
   type PdfExportOptions,
@@ -9,4 +8,3 @@ export {
   type ThemeColorSet,
 } from "./pdf/exportPdf.js";
 export { exportDocxBlob, downloadDocx } from "./docx/exportDocx.js";
-export { exportJsonString, irFingerprint } from "./json/exportJson.js";

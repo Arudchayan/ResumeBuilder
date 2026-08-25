@@ -263,10 +263,13 @@ export async function downloadPdf(
   sheetRoot?: HTMLElement | null,
   options: PdfExportOptions = {},
 ) {
-  const blob = await exportPdfBlob(
-    doc,
-    sheetRoot ?? document.querySelector<HTMLElement>(".sheet"),
-    options,
-  );
+  const root =
+    sheetRoot ??
+    document.querySelector<HTMLElement>(".sheet") ??
+    document.querySelector<HTMLElement>(".workspace-page");
+  if (!root) {
+    throw new Error("Resume preview not found for PDF export");
+  }
+  const blob = await exportPdfFromSheet(root, { name: doc.name, ...options });
   downloadBlob(blob, filename);
 }

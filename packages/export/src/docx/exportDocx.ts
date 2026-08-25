@@ -15,7 +15,6 @@ import {
   TableLayoutType,
   ShadingType,
 } from "docx";
-import { saveAs } from "file-saver";
 import type { ResumeDocument } from "@resume/core";
 import { documentToIr, type IrBlock } from "@resume/templates";
 
@@ -237,5 +236,10 @@ export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
 
 export async function downloadDocx(doc: ResumeDocument, filename = "resume.docx") {
   const blob = await exportDocxBlob(doc);
-  saveAs(blob, filename);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
