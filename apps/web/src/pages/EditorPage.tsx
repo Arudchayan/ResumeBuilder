@@ -136,7 +136,6 @@ export function EditorPage() {
   const saveNow = useAppStore((s) => s.saveNow);
   const [mobilePane, setMobilePane] = useState<"edit" | "preview">("edit");
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
-  const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [contentPadding, setContentPadding] = useState(48);
   const [fontScale, setFontScale] = useState(100);
   const [previewMode, setPreviewMode] = useState<"fit" | "inspect">("fit");
@@ -238,12 +237,10 @@ export function EditorPage() {
 
   const runExport = async (kind: "pdf" | "docx") => {
     setExporting(kind);
-    setExportStatus(kind === "pdf" ? "Preparing PDF…" : "Preparing DOCX…");
     try {
       const { downloadDocx } = await import("@resume/export");
       const filename = (doc.name || "resume").trim().replace(/\s+/g, "_") || "resume";
       if (kind === "pdf") {
-        setExportStatus(null);
         window.print();
         toast.success("Use the print dialog — choose “Save as PDF”");
       } else {
@@ -255,7 +252,6 @@ export function EditorPage() {
       toast.error(`${message}. Check the resume content and try again.`);
     } finally {
       setExporting(null);
-      setExportStatus(null);
     }
   };
 
@@ -568,7 +564,6 @@ export function EditorPage() {
                     : " · fits on one page"}
                 </span>
               </div>
-              {exportStatus ? <p className="page-metrics-hint">{exportStatus}</p> : null}
               {crossings.length > 0 ? (
                 <p className="page-metrics-hint" data-testid="overflow-warnings">
                   Crosses a page edge:{" "}
@@ -579,7 +574,7 @@ export function EditorPage() {
                   {crossings.length > 4 ? ` · +${crossings.length - 4} more` : ""}
                 </p>
               ) : null}
-              {pageMetrics.pages >= 3 && !exportStatus ? (
+              {pageMetrics.pages >= 3 ? (
                 <p className="page-metrics-hint">
                   Long resume — use Fit to 2 pages, compact skills, or trim older roles.
                 </p>
