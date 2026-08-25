@@ -1,11 +1,8 @@
-import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
-import type { ResumeDocument } from "@resume/core";
+import type { CSSProperties, KeyboardEvent } from "react";
 import type { LayoutIr, IrBlock } from "../ir/documentToIr.js";
 import { themeCssVars } from "@resume/ui";
-import { ClassicSidebarSheet } from "./ClassicSidebarSheet.js";
 import { PageBreakGuides } from "./PageBreakGuides.js";
 import { PAPER_PRESETS, type PaperId } from "./paper.js";
-import type { SkillsDensity } from "./layoutAssist.js";
 
 function BlockView({
   block,
@@ -68,27 +65,14 @@ function BlockView({
           {block.text}
         </p>
       );
-    case "chips":
+    case "chips": {
+      const items = (block.items as string[]).map((s) => s.trim()).filter(Boolean);
       return (
         <div className="rb-section mt-1" {...sectionAttrs} {...clickable}>
-          <p className="skills-compact text-[11px] leading-snug text-slate-800">{block.items.join(" · ")}</p>
+          <p className="skills-compact text-[11px] leading-snug text-slate-800">{items.join(" · ")}</p>
         </div>
       );
-    case "bullets":
-      return (
-        <div className="mt-1" {...sectionAttrs} {...clickable}>
-          {block.items.map((item, i) => (
-            <div
-              key={`${i}-${item.slice(0, 12)}`}
-              className="rb-keep my-1 grid gap-2 text-[12.5px]"
-              style={{ gridTemplateColumns: "12px 1fr" }}
-            >
-              <span className="text-[var(--theme-dark)]">•</span>
-              <span className="text-slate-800">{item}</span>
-            </div>
-          ))}
-        </div>
-      );
+    }
     case "kv":
       return (
         <div className="rb-keep my-2 text-[12px] text-slate-800" {...sectionAttrs} {...clickable}>
@@ -100,7 +84,10 @@ function BlockView({
       return (
         <a
           href={block.href}
-          className="rb-keep block text-[12px] font-medium text-[var(--theme-primary)]"
+          target="_blank"
+          rel="noreferrer noopener"
+          onClick={(e) => e.stopPropagation()}
+          className="rb-keep block text-[12px] font-medium hover:underline text-[var(--theme-primary)]"
           {...sectionAttrs}
           {...clickable}
         >
@@ -108,7 +95,9 @@ function BlockView({
         </a>
       );
     case "photo":
-      return <img src={block.src} alt="" className="rb-keep mb-3 h-24 w-24 rounded-full object-cover" />;
+      return (
+        <img src={block.src} alt="" className="rb-keep mb-6 mx-auto h-28 w-28 rounded-full border object-cover shadow-sm" />
+      );
     case "lineItem":
       return (
         <div className="rb-keep my-1 text-[12.5px]" {...sectionAttrs} {...clickable}>
@@ -116,36 +105,52 @@ function BlockView({
           {block.muted ? <span className="text-slate-500">{block.muted}</span> : null}
         </div>
       );
-    case "entry":
+    case "entry": {
+      const isCompactEntry = Boolean(block.url);
       return (
-        <article className="rb-entry mb-3" {...sectionAttrs} {...clickable}>
-          <div className="text-sm font-bold">{block.title}</div>
-          {block.subtitle ? <div className="text-sm font-semibold text-slate-500">{block.subtitle}</div> : null}
-          {block.meta ? <div className="text-xs text-slate-500">{block.meta}</div> : null}
+        <article className={`rb-entry ${isCompactEntry ? "my-1.5" : "mb-3"}`} {...sectionAttrs} {...clickable}>
+          <div className={isCompactEntry ? "font-semibold text-[12.5px]" : "text-sm font-bold"}>
+            {block.title}
+            {isCompactEntry && block.url ? (
+              <a
+                href={normalizeUrl(block.url)}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="ml-1 text-xs hover:underline"
+                style={{ color: "var(--theme-primary)" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                ↗
+              </a>
+            ) : null}
+          </div>
+          {block.subtitle ? <div className="text-slate-600">{block.subtitle}</div> : null}
+          {block.meta ? (
+            <div className={isCompactEntry ? "text-slate-600" : "text-xs text-slate-500"}>{block.meta}</div>
+          ) : null}
           {block.subsections?.map((sec, i) => (
             <div key={i} className="rb-keep mt-2">
-              {sec.title ? <div className="font-semibold">{sec.title}</div> : null}
+              {sec.title ? <div className="mt-1 font-semibold text-slate-900">{sec.title}</div> : null}
               {sec.bullets.map((line, j) => (
                 <div
                   key={j}
                   className="rb-keep my-1 grid gap-2 text-[12.5px]"
                   style={{ gridTemplateColumns: "12px 1fr" }}
                 >
-                  <span>•</span>
+                  <span style={{ color: "var(--theme-dark)" }}>•</span>
                   <span>{line}</span>
                 </div>
               ))}
             </div>
           ))}
           {block.body?.map((line, i) => (
-            <p key={i} className="mt-1 text-[12.5px]">
+            <div key={i} className="mt-1 text-[12.5px]">
               {line}
-            </p>
+            </div>
           ))}
         </article>
       );
-    case "spacer":
-      return <div className={block.size === "sm" ? "h-2" : "h-4"} />;
+    }
     default: {
       const _exhaustive: never = block;
       void _exhaustive;
@@ -154,8 +159,8 @@ function BlockView({
   }
 }
 
+/** Classic two-column sheet rendered straight from the IR (same blocks DOCX consumes). */
 export function ResumePreview({
-  doc,
   ir,
   zoom = 1,
   contentPadding = 48,
@@ -165,9 +170,7 @@ export function ResumePreview({
   pageCount = 1,
   showPageGuides = true,
   paperId = "a4",
-  skillsDensity = "comfortable",
 }: {
-  doc?: ResumeDocument;
   ir: LayoutIr;
   zoom?: number;
   contentPadding?: number;
@@ -177,36 +180,24 @@ export function ResumePreview({
   pageCount?: number;
   showPageGuides?: boolean;
   paperId?: PaperId;
-  skillsDensity?: SkillsDensity;
 }) {
   const paper = PAPER_PRESETS[paperId] ?? PAPER_PRESETS.a4;
-
-  // Classic sidebar: use the faithful DOM layout (matches the old builder / PDF look)
-  if (ir.templateId === "sidebar" && doc) {
-    return (
-      <div
-        className={`origin-top-left ${className}`}
-        style={{ transform: `scale(${zoom})`, width: `calc(${paper.widthMm}mm * ${zoom})` }}
-      >
-        <ClassicSidebarSheet
-          doc={doc}
-          contentPadding={contentPadding}
-          fontScale={fontScale}
-          onSectionClick={onSectionClick}
-          pageCount={pageCount}
-          showPageGuides={showPageGuides}
-          paperId={paperId}
-          skillsDensity={skillsDensity}
-        />
-      </div>
-    );
-  }
 
   const page = ir.pages[0];
   if (!page) return null;
   const vars = themeCssVars(ir.themeId) as CSSProperties;
-  const compact = ir.templateId === "compact";
-  const pad = compact ? Math.max(24, contentPadding - 12) : contentPadding;
+  const isSidebar = ir.templateId === "sidebar";
+  const pad = contentPadding;
+
+  const renderColumn = (blocks: IrBlock[], key: string) =>
+    blocks.map((block, idx) => (
+      <BlockView
+        key={`${key}-${idx}-${block.type}`}
+        block={block}
+        onSectionClick={onSectionClick}
+        compact={ir.templateId === "compact"}
+      />
+    ));
 
   return (
     <div
@@ -219,8 +210,8 @@ export function ResumePreview({
       data-template={ir.templateId}
     >
       <div
-        className={`sheet relative flex flex-col bg-white text-slate-900 shadow-lg ${
-          compact ? "ats-compact" : "ats-standard"
+        className={`sheet relative bg-white text-slate-900 shadow-lg ${
+          isSidebar ? "border" : "flex flex-col"
         }`}
         data-page-count={pageCount}
         data-paper={paper.id}
@@ -228,7 +219,12 @@ export function ResumePreview({
           width: `${paper.widthMm}mm`,
           minHeight: `${paper.heightMm}mm`,
           fontSize: `${fontScale}%`,
-          padding: `${pad}px`,
+          ...(isSidebar
+            ? {}
+            : {
+                padding: `${pad}px`,
+                ...(ir.templateId === "compact" ? {} : {}),
+              }),
         }}
       >
         <PageBreakGuides
@@ -237,54 +233,75 @@ export function ResumePreview({
           pageWidthMm={paper.widthMm}
           visible={showPageGuides}
         />
-        <div className="relative z-[1]">
-          {page.columns[0]?.blocks.map((block, idx) => (
-            <BlockView
-              key={`main-${idx}-${block.type}`}
-              block={block}
-              onSectionClick={onSectionClick}
-              compact={compact}
-            />
-          ))}
-        </div>
+        {isSidebar ? (
+          <div
+            className="sheet-grid relative z-[1] grid"
+            style={{ gridTemplateColumns: "30% 1fr", minHeight: `${paper.heightMm}mm` }}
+          >
+            <aside
+              className="border-r"
+              style={{
+                padding: `${pad}px ${pad * 0.667}px`,
+                background:
+                  "linear-gradient(180deg, var(--theme-gradient-from) 0%, var(--theme-gradient-to) 100%)",
+              }}
+            >
+              {page.columns.find((c) => c.id === "aside")?.blocks.map((block, idx) => (
+                <BlockView
+                  key={`aside-${idx}-${block.type}`}
+                  block={block}
+                  onSectionClick={onSectionClick}
+                />
+              ))}
+            </aside>
+            <main style={{ padding: `${pad}px` }}>
+              {renderColumn(page.columns.find((c) => c.id === "main")?.blocks ?? [], "main")}
+            </main>
+          </div>
+        ) : (
+          <div className="relative z-[1]">
+            {renderColumn(page.columns[0]?.blocks ?? [], "main")}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+function normalizeUrl(url?: string) {
+  const raw = (url || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
 export function TemplateThumb({
   accent,
-  children,
 }: {
   accent: string;
-  children?: ReactNode;
 }) {
   return (
     <div
       className="aspect-[210/297] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
       style={{ borderTopColor: accent, borderTopWidth: 4 }}
     >
-      {children ?? (
-        <div className="flex h-full">
-          <div className="w-[30%] border-r p-2" style={{ background: `linear-gradient(180deg, ${accent}22, #fff)` }}>
-            <div className="mb-2 h-1.5 w-10 rounded bg-slate-300" />
-            <div className="mb-1 h-1 w-full rounded bg-slate-200" />
-            <div className="mb-1 h-1 w-4/5 rounded bg-slate-200" />
-            <div className="mt-3 flex flex-wrap gap-1">
-              <span className="h-2 w-8 rounded-full border bg-slate-50" />
-              <span className="h-2 w-6 rounded-full border bg-slate-50" />
-            </div>
-          </div>
-          <div className="flex-1 space-y-2 p-3">
-            <div className="h-3 w-2/3 rounded" style={{ background: accent }} />
-            <div className="h-1 w-12 rounded-full" style={{ background: accent }} />
-            <div className="h-1.5 w-full rounded bg-slate-200" />
-            <div className="h-1.5 w-5/6 rounded bg-slate-200" />
+      <div className="flex h-full">
+        <div className="w-[30%] border-r p-2" style={{ background: `linear-gradient(180deg, ${accent}22, #fff)` }}>
+          <div className="mb-2 h-1.5 w-10 rounded bg-slate-300" />
+          <div className="mb-1 h-1 w-full rounded bg-slate-200" />
+          <div className="mb-1 h-1 w-4/5 rounded bg-slate-200" />
+          <div className="mt-3 flex flex-wrap gap-1">
+            <span className="h-2 w-8 rounded-full border bg-slate-50" />
+            <span className="h-2 w-6 rounded-full border bg-slate-50" />
           </div>
         </div>
-      )}
+        <div className="flex-1 space-y-2 p-3">
+          <div className="h-3 w-2/3 rounded" style={{ background: accent }} />
+          <div className="h-1 w-12 rounded-full" style={{ background: accent }} />
+          <div className="h-1.5 w-full rounded bg-slate-200" />
+          <div className="h-1.5 w-5/6 rounded bg-slate-200" />
+        </div>
+      </div>
     </div>
   );
 }
-
-export { ClassicSidebarSheet };

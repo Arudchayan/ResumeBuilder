@@ -10,7 +10,6 @@ export {
 } from "./ir/documentToIr.js";
 
 export { ResumePreview, TemplateThumb } from "./preview/ResumePreview.js";
-export { ClassicSidebarSheet } from "./preview/ClassicSidebarSheet.js";
 export { PageBreakGuides } from "./preview/PageBreakGuides.js";
 export {
   A4_PAPER,
