@@ -43,46 +43,37 @@ export function Label({
 export function Field({
   label,
   error,
+  multiline,
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }) {
+}: InputHTMLAttributes<HTMLInputElement> &
+  TextareaHTMLAttributes<HTMLTextAreaElement> & {
+    label: string;
+    error?: string;
+    multiline?: boolean;
+  }) {
   const id = useId();
   const errorId = `${id}-error`;
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <input
-        id={id}
-        aria-invalid={Boolean(error) || undefined}
-        aria-describedby={error ? errorId : undefined}
-        className="field-control w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--theme-primary)] focus:ring-2"
-        {...props}
-      />
-      {error ? (
-        <p id={errorId} className="text-xs text-red-600" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
+  const control = multiline ? (
+    <textarea
+      id={id}
+      aria-invalid={Boolean(error) || undefined}
+      aria-describedby={error ? errorId : undefined}
+      className="field-control min-h-[112px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--theme-primary)] focus:ring-2"
+      {...props}
+    />
+  ) : (
+    <input
+      id={id}
+      aria-invalid={Boolean(error) || undefined}
+      aria-describedby={error ? errorId : undefined}
+      className="field-control w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--theme-primary)] focus:ring-2"
+      {...props}
+    />
   );
-}
-
-export function TextAreaField({
-  label,
-  error,
-  ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; error?: string }) {
-  const id = useId();
-  const errorId = `${id}-error`;
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <textarea
-        id={id}
-        aria-invalid={Boolean(error) || undefined}
-        aria-describedby={error ? errorId : undefined}
-        className="field-control min-h-[112px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--theme-primary)] focus:ring-2"
-        {...props}
-      />
+      {control}
       {error ? (
         <p id={errorId} className="text-xs text-red-600" role="alert">
           {error}

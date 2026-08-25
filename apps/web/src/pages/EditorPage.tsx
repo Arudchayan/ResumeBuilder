@@ -723,7 +723,6 @@ export function EditorPage() {
             </div>
             <div ref={previewHostRef} className={`preview-stage ${previewMode === "inspect" ? "is-inspecting" : ""}`}>
               <ResumePreview
-                doc={doc}
                 ir={ir}
                 zoom={zoom}
                 contentPadding={contentPadding}
@@ -731,7 +730,6 @@ export function EditorPage() {
                 pageCount={pageMetrics.pages}
                 showPageGuides={showPageGuides}
                 paperId={paperId}
-                skillsDensity={skillsDensity}
                 onSectionClick={(sectionId) => {
                   setActiveSection(sectionId);
                   setMobilePane("edit");

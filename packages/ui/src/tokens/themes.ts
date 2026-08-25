@@ -66,7 +66,6 @@ export const themes = {
 } as const;
 
 export type ThemeId = keyof typeof themes;
-export const defaultTheme: ThemeId = "teal";
 
 export function themeCssVars(themeId: string): Record<string, string> {
   const theme = themes[themeId as ThemeId] ?? themes.teal;

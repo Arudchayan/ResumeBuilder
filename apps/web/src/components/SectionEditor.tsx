@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { ArrayKey, ResumeCommand, ResumeDocument } from "@resume/core";
-import { Button, Field, TextAreaField } from "@resume/ui";
+import { Button, Field } from "@resume/ui";
 import { Plus, Trash2, Upload } from "lucide-react";
 
 interface Props {
@@ -87,7 +87,8 @@ export function SectionEditor({ doc, sectionId, apply }: Props) {
               value={doc.headline}
               onChange={(event) => apply({ type: "setField", path: "headline", value: event.target.value })}
             />
-            <TextAreaField
+            <Field
+              multiline
               label="Profile summary"
               placeholder="Two or three sentences that connect your experience to the work you want next."
               value={doc.summary}
@@ -255,7 +256,7 @@ function GenericListSection({ doc, sectionId, apply }: { doc: ResumeDocument; se
               const update = (value: string) =>
                 apply({ type: "updateArrayItem", key, index, item: { ...item, [field]: value } });
               if (field === "description") {
-                return <TextAreaField key={field} label={label} value={item[field] ?? ""} onChange={(event) => update(event.target.value)} className="sm:col-span-2" />;
+                return <Field key={field} multiline label={label} value={item[field] ?? ""} onChange={(event) => update(event.target.value)} className="sm:col-span-2" />;
               }
               return <Field key={field} label={label} value={item[field] ?? ""} onChange={(event) => update(event.target.value)} />;
             })}

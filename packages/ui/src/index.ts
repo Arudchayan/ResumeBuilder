@@ -1,2 +1,2 @@
-export { themes, defaultTheme, themeCssVars, type ThemeId } from "./tokens/themes.js";
-export { Button, Label, Field, TextAreaField, Dialog } from "./components/primitives.js";
+export { themes, themeCssVars, type ThemeId } from "./tokens/themes.js";
+export { Button, Field, Dialog } from "./components/primitives.js";
