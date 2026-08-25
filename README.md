@@ -49,7 +49,7 @@ pnpm build
 
 ## Documentation
 
-- [SaaS growth seams (Phase B)](docs/architecture/saas-seams.md)
+See `docs/architecture/ponytail-audit.md` for the simplification ledger.
 
 ## Migration from v1
 
