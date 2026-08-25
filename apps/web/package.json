@@ -18,7 +18,6 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@resume/core": "workspace:*",
     "@resume/export": "workspace:*",
-    "@resume/ports": "workspace:*",
     "@resume/storage": "workspace:*",
     "@resume/templates": "workspace:*",
     "@resume/ui": "workspace:*",

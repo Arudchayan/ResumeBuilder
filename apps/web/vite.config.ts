@@ -17,10 +17,6 @@ export default defineConfig({
         replacement: path.resolve(import.meta.dirname, "../../packages/core/src/index.ts"),
       },
       {
-        find: "@resume/ports",
-        replacement: path.resolve(import.meta.dirname, "../../packages/ports/src/index.ts"),
-      },
-      {
         find: "@resume/storage",
         replacement: path.resolve(import.meta.dirname, "../../packages/storage/src/index.ts"),
       },
