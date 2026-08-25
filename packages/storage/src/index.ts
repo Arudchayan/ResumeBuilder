@@ -121,11 +121,3 @@ export class IndexedDbStorage {
   }
 }
 
-export function exportResumeJson(doc: ResumeDocument): string {
-  return JSON.stringify(doc, null, 2);
-}
-
-export function importResumeJson(raw: string): ResumeDocument {
-  const parsed = JSON.parse(raw) as unknown;
-  return parseResumeData(parsed);
-}

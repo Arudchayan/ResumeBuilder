@@ -14,8 +14,7 @@ import {
 import {
   IndexedDbStorage,
   migrateLegacyDraft,
-  exportResumeJson,
-  importResumeJson,
+  parseResumeData,
 } from "@resume/storage";
 import { downloadBlob } from "@resume/export";
 
@@ -167,7 +166,7 @@ export const useAppStore = create<AppState>((set, get) => {
 
     async importJsonFile(file) {
       const text = await file.text();
-      const doc = importResumeJson(text);
+      const doc = parseResumeData(JSON.parse(text) as unknown);
       if (!doc.id) doc.id = crypto.randomUUID();
       await library.save(doc);
       set({
@@ -179,7 +178,7 @@ export const useAppStore = create<AppState>((set, get) => {
     },
 
     exportJson() {
-      const json = exportResumeJson(get().history.present);
+      const json = JSON.stringify(get().history.present, null, 2);
       downloadBlob(new Blob([json], { type: "application/json" }), "resume.json");
     },
   };
