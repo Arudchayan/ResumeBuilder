@@ -53,3 +53,6 @@ Arudchayan_Pirabaharan.pdf
 # Backup files
 *.backup
 *.bak
+
+# Agent worktrees
+.wk/
