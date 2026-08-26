@@ -43,17 +43,17 @@ const httpUrlField = (max = 1000) =>
     .optional()
     .default("");
 
-export const linkSchema = z.object({
+const linkSchema = z.object({
   label: z.string().trim().max(200).optional().default(""),
   url: httpUrlField(),
 });
 
-export const jobSectionSchema = z.object({
+const jobSectionSchema = z.object({
   title: z.string().trim().max(200).optional().default(""),
   bullets: z.array(z.string().max(1000)).optional().default([]),
 });
 
-export const jobSchema = z.object({
+const jobSchema = z.object({
   role: z.string().trim().max(200).optional().default(""),
   company: z.string().trim().max(200).optional().default(""),
   location: z.string().trim().max(200).optional().default(""),
@@ -62,13 +62,13 @@ export const jobSchema = z.object({
   sections: z.array(jobSectionSchema).optional().default([]),
 });
 
-export const educationSchema = z.object({
+const educationSchema = z.object({
   degree: z.string().trim().max(200).optional().default(""),
   school: z.string().trim().max(200).optional().default(""),
   when: z.string().trim().max(100).optional().default(""),
 });
 
-export const certSchema = z.object({
+const certSchema = z.object({
   title: z.string().trim().max(200).optional().default(""),
   org: z.string().trim().max(200).optional().default(""),
   when: z.string().trim().max(100).optional().default(""),
@@ -81,7 +81,7 @@ const techField = z.preprocess((val) => {
   return val;
 }, z.string().trim().max(300).optional().default(""));
 
-export const projectSchema = z
+const projectSchema = z
   .object({
     title: z.string().trim().max(200).optional().default(""),
     description: z.string().trim().max(1000).optional().default(""),
@@ -114,25 +114,25 @@ export const projectSchema = z
     };
   });
 
-export const languageSchema = z.object({
+const languageSchema = z.object({
   name: z.string().trim().max(100).optional().default(""),
   level: z.string().trim().max(100).optional().default(""),
 });
 
-export const publicationSchema = z.object({
+const publicationSchema = z.object({
   title: z.string().trim().max(300).optional().default(""),
   publisher: z.string().trim().max(200).optional().default(""),
   when: z.string().trim().max(100).optional().default(""),
   url: httpUrlField(),
 });
 
-export const awardSchema = z.object({
+const awardSchema = z.object({
   title: z.string().trim().max(200).optional().default(""),
   issuer: z.string().trim().max(200).optional().default(""),
   when: z.string().trim().max(100).optional().default(""),
 });
 
-export const TEMPLATE_IDS = ["ats", "sidebar", "compact"] as const;
+const TEMPLATE_IDS = ["ats", "sidebar", "compact"] as const;
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
 
 /** Map legacy template ids (e.g. "modern") onto current ones. */
@@ -142,7 +142,7 @@ export function normalizeTemplateId(raw: unknown): TemplateId {
     : "sidebar";
 }
 
-export const resumeSchema = z.preprocess(
+const resumeSchema = z.preprocess(
   (input) => {
     if (!input || typeof input !== "object") return input;
     const data = { ...(input as Record<string, unknown>) };

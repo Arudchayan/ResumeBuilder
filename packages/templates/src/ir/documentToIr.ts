@@ -22,7 +22,7 @@ export type IrBlock =
     }
   | { type: "lineItem"; text: string; muted?: string; sectionId?: string };
 
-export interface IrColumn {
+interface IrColumn {
   id: string;
   blocks: IrBlock[];
 }
@@ -33,7 +33,7 @@ export interface LayoutIr {
   columns: IrColumn[];
 }
 
-export interface TemplateManifest {
+interface TemplateManifest {
   id: TemplateId;
   name: string;
   description: string;

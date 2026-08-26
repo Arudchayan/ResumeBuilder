@@ -17,7 +17,6 @@
     "docx": "^9.5.1"
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "typescript": "^7.0.2"
   }
 }

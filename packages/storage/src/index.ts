@@ -47,7 +47,7 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
   }
 }
 
-export type ResumeMeta = {
+type ResumeMeta = {
   id: string;
   updatedAt: number;
 };

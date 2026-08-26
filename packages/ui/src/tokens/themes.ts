@@ -59,7 +59,7 @@ export const themes = {
   },
 } as const;
 
-export type ThemeId = keyof typeof themes;
+type ThemeId = keyof typeof themes;
 
 export function themeCssVars(themeId: string): CSSProperties {
   const theme = themes[themeId as ThemeId] ?? themes.teal;
