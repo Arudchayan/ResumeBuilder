@@ -10,14 +10,18 @@ const isValidHttpUrl = (value: string) => {
   if (!trimmed) return true;
   if (/[<>"'\s]/.test(trimmed)) return false;
   try {
-    // A `scheme:` prefix that is not http/https (e.g. `javascript:`) must
-    // fail — never prepend `https://` and re-test the protocol.
-    const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed);
-    const candidate = hasScheme ? trimmed : `https://${trimmed}`;
-    const parsed = new URL(candidate);
+    const parsed = new URL(trimmed);
+    // A real scheme that is not http(s) (e.g. `javascript:`) fails outright.
     return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
-    return false;
+    // No parseable scheme (e.g. `example.com` or `example.com:8080/x`):
+    // retry as an https URL rather than rejecting valid input.
+    try {
+      const retry = new URL(`https://${trimmed}`);
+      return retry.protocol === "http:" || retry.protocol === "https:";
+    } catch {
+      return false;
+    }
   }
 };
 
@@ -195,8 +199,14 @@ const resumeSchema = z.preprocess(
     if (Array.isArray(data.jobs)) {
       for (const job of data.jobs) {
         if (!job || typeof job !== "object") continue;
-        const sections = (job as Record<string, unknown>).sections;
-        if (!Array.isArray(sections)) continue;
+        const jobRecord = job as Record<string, unknown>;
+        const rawSections = jobRecord.sections;
+        if (!Array.isArray(rawSections)) continue;
+        let sections: unknown[] = rawSections;
+        if (sections.length > 20) {
+          sections = sections.slice(0, 20);
+          jobRecord.sections = sections;
+        }
         for (const section of sections) {
           if (!section || typeof section !== "object") continue;
           const bullets = (section as Record<string, unknown>).bullets;

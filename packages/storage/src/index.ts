@@ -61,7 +61,11 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
     // Not JSON at all: quarantine the raw text so it is never retried,
     // then flag as migrated so boot does not hit this every time.
     try {
-      localStorage.setItem(QUARANTINE_KEY, raw.slice(0, 100_000));
+      try {
+        localStorage.setItem(QUARANTINE_KEY, raw);
+      } catch {
+        localStorage.setItem(QUARANTINE_KEY, raw.slice(0, 100_000));
+      }
       localStorage.removeItem(LEGACY_KEY);
     } catch {
       // storage itself is broken; nothing more we can preserve
@@ -88,7 +92,11 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
     // Parseable JSON but invalid as a resume: quarantine for inspection,
     // remove the legacy key, and flag so boot moves on.
     try {
-      localStorage.setItem(QUARANTINE_KEY, raw.slice(0, 100_000));
+      try {
+        localStorage.setItem(QUARANTINE_KEY, raw);
+      } catch {
+        localStorage.setItem(QUARANTINE_KEY, raw.slice(0, 100_000));
+      }
       localStorage.removeItem(LEGACY_KEY);
     } catch {
       // storage itself is broken; nothing more we can preserve

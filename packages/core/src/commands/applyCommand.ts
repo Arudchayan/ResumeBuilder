@@ -23,7 +23,7 @@ const BLOCKED_PATH_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const PATH_PART = /^[A-Za-z0-9_-]+$/;
 const MAX_PATH_DEPTH = 5;
 
-/** Per-array growth caps, mirrored by the schema preprocess truncation. */
+/** Per-array growth caps, mirrored by the schema preprocess truncation (skills is setField-only and capped at 100 in the schema). */
 export const ARRAY_CAPS: Record<ArrayKey, number> = {
   links: 50,
   jobs: 50,
@@ -94,7 +94,7 @@ export function applyCommand(doc: ResumeDocument, command: ResumeCommand): Resum
       const incoming = command.document as unknown as Record<string, unknown>;
       const target = draft as unknown as Record<string, unknown>;
       for (const [key, value] of Object.entries(incoming)) {
-        if (key === "updatedAt" || BLOCKED_PATH_KEYS.has(key)) continue;
+        if (key === "updatedAt" || key === "id" || BLOCKED_PATH_KEYS.has(key)) continue;
         if (isDeepEqual(target[key], value)) continue;
         target[key] = value;
         mutated = true;
