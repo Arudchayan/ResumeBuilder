@@ -1,26 +1,17 @@
 export {
-  resumeSchema,
-  validateResumeData,
   parseResumeData,
+  parseResumeMeta,
   normalizeTemplateId,
   normalizeThemeId,
-  resumeMetaSchema,
-  parseResumeMeta,
   THEME_IDS,
-  TEMPLATE_IDS,
   type ResumeDocument,
   type TemplateId,
-  type Job,
-  type Project,
+  type ThemeId,
 } from "./schema/resume.js";
 
 export {
   SECTION_CONFIG,
-  getDefaultVisibility,
-  getDefaultSectionOrder,
-  isSectionEmpty,
   blankResume,
-  type SectionId,
 } from "./schema/sections.js";
 
 export {
@@ -35,7 +26,6 @@ export {
   dispatch,
   undo,
   redo,
-  replacePresent,
   type HistoryState,
 } from "./history/history.js";
 

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import type { ArrayKey, ResumeCommand, ResumeDocument } from "@resume/core";
-
-import { toast } from "sonner";
-import { Button, Field, TextAreaField } from "@resume/ui";
+import { SECTION_CONFIG } from "@resume/core";
+import { Button, Field } from "@resume/ui";
 import { Plus, Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   doc: ResumeDocument;
@@ -11,29 +11,20 @@ interface Props {
   apply: (command: ResumeCommand) => void;
 }
 
-const sectionCopy: Record<string, { title: string; description: string }> = {
-  identity: { title: "Identity", description: "Make the first impression clear: your name, positioning, and short profile." },
-  photo: { title: "Photo", description: "Add an optional professional photo for templates that support it." },
-  contact: { title: "Contact & links", description: "Give recruiters an easy way to reach you and find your work." },
-  skills: { title: "Skills", description: "Keep this focused on tools, methods, and strengths relevant to the role." },
-  employment: { title: "Employment", description: "Show impact with concise roles, dates, and evidence-led bullet points." },
-  projects: { title: "Projects", description: "Highlight selected work with the outcome, stack, and a useful link." },
-  certs: { title: "Certifications", description: "List credentials that add signal for the roles you are targeting." },
-  edus: { title: "Education", description: "Add degrees, institutions, and dates in the order you want them shown." },
-  languages: { title: "Languages", description: "Share languages and proficiency when they are relevant to the role." },
-  publications: { title: "Publications", description: "Add articles, papers, or other work that strengthens your profile." },
-  awards: { title: "Awards & honors", description: "Include meaningful recognition with the organization and date." },
-};
+function sectionMeta(sectionId: string) {
+  const meta = SECTION_CONFIG.find((s) => s.id === sectionId);
+  return meta ?? { label: sectionId, blurb: "Add the details you want to appear on your resume." };
+}
 
 function SectionIntro({ sectionId, count }: { sectionId: string; count?: number }) {
-  const copy = sectionCopy[sectionId] ?? { title: sectionId, description: "Add the details you want to appear on your resume." };
+  const meta = sectionMeta(sectionId);
   return (
     <div className="section-editor-heading">
       <div className="flex items-center justify-between gap-3">
-        <h2>{copy.title}</h2>
+        <h2>{meta.label}</h2>
         {count !== undefined ? <span className="section-count">{count} {count === 1 ? "item" : "items"}</span> : null}
       </div>
-      <p>{copy.description}</p>
+      <p>{meta.blurb}</p>
     </div>
   );
 }
@@ -89,7 +80,8 @@ export function SectionEditor({ doc, sectionId, apply }: Props) {
               value={doc.headline}
               onChange={(event) => apply({ type: "setField", path: "headline", value: event.target.value })}
             />
-            <TextAreaField
+            <Field
+              multiline
               label="Profile summary"
               placeholder="Two or three sentences that connect your experience to the work you want next."
               value={doc.summary}
@@ -126,26 +118,29 @@ export function SectionEditor({ doc, sectionId, apply }: Props) {
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
                   aria-label="Upload resume photo"
+                  className="sr-only"
                   onChange={(event) => {
                     const input = event.target;
                     const file = input.files?.[0];
                     if (!file) return;
                     if (file.size > 5 * 1024 * 1024) {
-                      toast.error("Photo too large — JPG, PNG, or WebP up to 5 MB.");
+                      toast.error("Image is too large — please choose one under 5 MB.");
                       input.value = "";
                       return;
                     }
                     const reader = new FileReader();
                     reader.onerror = () => {
-                      toast.error("Could not read that image file.");
+                      toast.error("Could not read that image. Try a different file.");
                       input.value = "";
                     };
                     reader.onload = () => {
-                      // Relative command: merges into current state on apply,
-                      // so keystrokes typed while the file loads are preserved.
-                      apply({ type: "setPhoto", dataUrl: String(reader.result || "") });
+                      if (!reader.result) {
+                        toast.error("Could not read that image. Try a different file.");
+                        input.value = "";
+                        return;
+                      }
+                      apply({ type: "setPhoto", dataUrl: String(reader.result) });
                       input.value = "";
                     };
                     reader.readAsDataURL(file);
@@ -188,7 +183,7 @@ export function SectionEditor({ doc, sectionId, apply }: Props) {
       return (
         <div className="section-editor">
           <SectionIntro sectionId={sectionId} count={doc.skills.length} />
-          <SkillChips skills={doc.skills} onChange={(skills) => apply({ type: "setSkills", skills })} />
+          <SkillChips skills={doc.skills} onChange={(skills) => apply({ type: "setField", path: "skills", value: skills })} />
         </div>
       );
 
@@ -259,7 +254,7 @@ function GenericListSection({ doc, sectionId, apply }: { doc: ResumeDocument; se
     <div className="section-editor">
       <SectionIntro sectionId={sectionId} count={items.length} />
       <ArrayEditor
-        title={sectionCopy[sectionId]?.title ?? sectionId}
+        title={sectionMeta(sectionId).label}
         items={items}
         onAdd={() => apply({ type: "addArrayItem", key, item: emptyItem(key) })}
         onRemove={(index) => apply({ type: "removeArrayItem", key, index })}
@@ -270,7 +265,7 @@ function GenericListSection({ doc, sectionId, apply }: { doc: ResumeDocument; se
               const update = (value: string) =>
                 apply({ type: "updateArrayItem", key, index, item: { ...item, [field]: value } });
               if (field === "description") {
-                return <TextAreaField key={field} label={label} value={item[field] ?? ""} onChange={(event) => update(event.target.value)} className="sm:col-span-2" />;
+                return <Field key={field} multiline label={label} value={item[field] ?? ""} onChange={(event) => update(event.target.value)} className="sm:col-span-2" />;
               }
               return <Field key={field} label={label} value={item[field] ?? ""} onChange={(event) => update(event.target.value)} />;
             })}

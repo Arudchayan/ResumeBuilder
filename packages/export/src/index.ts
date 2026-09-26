@@ -1,3 +1,1 @@
-export { exportPdfBlob, downloadPdf, exportPdfFromSheet } from "./pdf/exportPdf.js";
-export { exportDocxBlob, downloadDocx } from "./docx/exportDocx.js";
-export { exportJsonString, irFingerprint } from "./json/exportJson.js";
+export { downloadDocx, downloadBlob } from "./docx/exportDocx.js";

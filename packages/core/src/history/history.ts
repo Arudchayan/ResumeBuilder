@@ -42,7 +42,3 @@ export function redo(history: HistoryState): HistoryState {
     future: history.future.slice(1),
   };
 }
-
-export function replacePresent(history: HistoryState, present: ResumeDocument): HistoryState {
-  return { past: [], present, future: [] };
-}

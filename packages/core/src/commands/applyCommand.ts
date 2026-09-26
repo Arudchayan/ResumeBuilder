@@ -1,20 +1,13 @@
-import { produce } from "immer";
 import type { ResumeDocument } from "../schema/resume.js";
 import { getDefaultSectionOrder } from "../schema/sections.js";
 
 export type ResumeCommand =
   | { type: "setField"; path: string; value: unknown }
   | { type: "setDocument"; document: ResumeDocument }
-  | { type: "reorderSections"; order: string[] }
-  | { type: "setSectionVisibility"; id: string; visible: boolean }
-  | { type: "setTemplate"; template: ResumeDocument["template"] }
-  | { type: "setTheme"; theme: string }
+  | { type: "setPhoto"; dataUrl: string }
   | { type: "addArrayItem"; key: ArrayKey; item: unknown }
   | { type: "removeArrayItem"; key: ArrayKey; index: number }
-  | { type: "updateArrayItem"; key: ArrayKey; index: number; item: unknown }
-  | { type: "reorderArray"; key: ArrayKey; from: number; to: number }
-  | { type: "setSkills"; skills: string[] }
-  | { type: "setPhoto"; dataUrl: string };
+  | { type: "updateArrayItem"; key: ArrayKey; index: number; item: unknown };
 
 export type ArrayKey =
   | "links"
@@ -27,11 +20,11 @@ export type ArrayKey =
   | "awards";
 
 const BLOCKED_PATH_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const PATH_PART = /^[A-Za-z0-9_-]+$/;
+const MAX_PATH_DEPTH = 5;
 
-const THEME_IDS = ["teal", "blue", "purple", "green", "slate", "forest", "copper", "black"] as const;
-type ThemeId = (typeof THEME_IDS)[number];
-
-const ARRAY_CAPS: Record<ArrayKey, number> = {
+/** Per-array growth caps, mirrored by the schema preprocess truncation. */
+export const ARRAY_CAPS: Record<ArrayKey, number> = {
   links: 50,
   jobs: 50,
   projects: 50,
@@ -42,30 +35,30 @@ const ARRAY_CAPS: Record<ArrayKey, number> = {
   awards: 50,
 };
 
-function getByPath(obj: Record<string, unknown>, path: string): unknown {
-  const parts = path.split(".");
-  let cursor: unknown = obj;
-  for (const key of parts) {
-    if (typeof cursor !== "object" || cursor === null) return undefined;
-    cursor = (cursor as Record<string, unknown>)[key];
-  }
-  return cursor;
+function isValidIndex(arr: unknown[], index: number) {
+  return Number.isInteger(index) && index >= 0 && index < arr.length;
 }
 
-function setByPath(obj: Record<string, unknown>, path: string, value: unknown) {
+/**
+ * Guarded path writer. Returns false (no mutation) when the path is
+ * missing, too deep, not allowlisted, a prototype-pollution attempt,
+ * traverses an array, or already holds the value.
+ */
+function setByPath(obj: Record<string, unknown>, path: string, value: unknown): boolean {
   const parts = path.split(".");
-  if (parts.length === 0 || parts.length > 5) return false;
-  for (const key of parts) {
-    if (!key || BLOCKED_PATH_KEYS.has(key) || !/^[A-Za-z0-9_-]+$/.test(key)) return false;
+  if (parts.length === 0 || parts.length > MAX_PATH_DEPTH) return false;
+  for (const part of parts) {
+    if (!part || !PATH_PART.test(part) || BLOCKED_PATH_KEYS.has(part)) return false;
   }
   let cursor: Record<string, unknown> = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const key = parts[i]!;
     const next = cursor[key];
-    if (typeof next !== "object" || next === null || Array.isArray(next)) {
-      return false;
+    if (Array.isArray(next)) return false;
+    if (typeof next !== "object" || next === null) {
+      cursor[key] = {};
     }
-    cursor = next as Record<string, unknown>;
+    cursor = cursor[key] as Record<string, unknown>;
   }
   const leaf = parts[parts.length - 1]!;
   if (cursor[leaf] === value) return false;
@@ -73,154 +66,75 @@ function setByPath(obj: Record<string, unknown>, path: string, value: unknown) {
   return true;
 }
 
-function isValidIndex(length: number, index: number) {
-  return Number.isInteger(index) && index >= 0 && index < length;
+function isDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
 }
 
 export function applyCommand(doc: ResumeDocument, command: ResumeCommand): ResumeDocument {
-  return produce(doc, (draft) => {
-    let mutated = false;
-    switch (command.type) {
-      case "setField":
-        mutated = setByPath(
-          draft as unknown as Record<string, unknown>,
-          command.path,
-          command.value,
-        );
-        break;
-      case "setDocument": {
-        // Merge-only: ignore caller-supplied updatedAt, sanitize theme, and
-        // assign per-key so identical documents stay a no-op for history.
-        const { updatedAt: _ignored, ...rest } = (command.document ?? {}) as Record<string, unknown>;
-        const target = draft as unknown as Record<string, unknown>;
-        for (const [key, value] of Object.entries(rest)) {
-          if (BLOCKED_PATH_KEYS.has(key)) continue;
-          if (key === "theme" && !(THEME_IDS as readonly string[]).includes(value as string)) continue;
-          const current = target[key];
-          if (current !== value && JSON.stringify(current) !== JSON.stringify(value)) {
-            target[key] = value;
-            mutated = true;
-          }
-        }
-        break;
+  const draft = structuredClone(doc);
+  let mutated = false;
+  switch (command.type) {
+    case "setField":
+      mutated = setByPath(draft as unknown as Record<string, unknown>, command.path, command.value);
+      break;
+    case "setPhoto": {
+      const photo = draft.photo ?? { enabled: false, url: "", dataUrl: "" };
+      if (photo.dataUrl !== command.dataUrl || !photo.enabled) {
+        draft.photo = { ...photo, dataUrl: command.dataUrl, enabled: true };
+        mutated = true;
       }
-      case "reorderSections": {
-        const seen = new Set<string>();
-        const clean = command.order.filter((id) => {
-          if (typeof id !== "string" || !id || seen.has(id)) return false;
-          seen.add(id);
-          return true;
-        });
-        const defaults = getDefaultSectionOrder();
-        for (const id of defaults) if (!seen.has(id)) clean.push(id);
-        mutated = JSON.stringify(draft.sectionOrder) !== JSON.stringify(clean);
-        if (mutated) draft.sectionOrder = clean;
-        break;
-      }
-      case "setSectionVisibility": {
-        if (!command.id || BLOCKED_PATH_KEYS.has(command.id)) break;
-        if (draft.sectionVisibility?.[command.id] !== command.visible) {
-          draft.sectionVisibility = {
-            ...draft.sectionVisibility,
-            [command.id]: command.visible,
-          };
-          mutated = true;
-        }
-        break;
-      }
-      case "setTemplate":
-        if ((draft.template as string) !== (command.template as string)) {
-          draft.template = command.template;
-          mutated = true;
-        }
-        break;
-      case "setTheme": {
-        const next = command.theme as ThemeId;
-        if (THEME_IDS.includes(next) && (draft.theme as string) !== next) {
-          draft.theme = next;
-          mutated = true;
-        }
-        break;
-      }
-      case "addArrayItem": {
-        const arr = draft[command.key] as unknown[];
-        if (Array.isArray(arr) && arr.length < (ARRAY_CAPS[command.key] ?? 100)) {
-          arr.push(command.item);
-          mutated = true;
-        }
-        break;
-      }
-      case "removeArrayItem": {
-        const arr = draft[command.key] as unknown[];
-        if (Array.isArray(arr) && isValidIndex(arr.length, command.index)) {
-          arr.splice(command.index, 1);
-          mutated = true;
-        }
-        break;
-      }
-      case "updateArrayItem": {
-        const arr = draft[command.key] as unknown[];
-        if (Array.isArray(arr) && isValidIndex(arr.length, command.index)) {
-          if (arr[command.index] !== command.item) {
-            arr[command.index] = command.item;
-            mutated = true;
-          }
-        }
-        break;
-      }
-      case "reorderArray": {
-        const arr = draft[command.key] as unknown[];
-        if (
-          Array.isArray(arr) &&
-          isValidIndex(arr.length, command.from) &&
-          Number.isInteger(command.to) &&
-          command.to >= 0 &&
-          command.to < arr.length &&
-          command.from !== command.to
-        ) {
-          const [moved] = arr.splice(command.from, 1);
-          if (moved !== undefined) {
-            arr.splice(command.to, 0, moved);
-            mutated = true;
-          }
-        }
-        break;
-      }
-      case "setSkills": {
-        const input = Array.isArray(command.skills) ? command.skills : [];
-        const clean = input
-          .filter((s): s is string => typeof s === "string")
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .slice(0, 100);
-        if (JSON.stringify(draft.skills) !== JSON.stringify(clean)) {
-          draft.skills = clean;
-          mutated = true;
-        }
-        break;
-      }
-      case "setPhoto": {
-        const url = typeof command.dataUrl === "string" ? command.dataUrl : "";
-        const photo = draft.photo ?? { enabled: false, url: "", dataUrl: "" };
-        if (photo.dataUrl !== url || photo.enabled !== true) {
-          draft.photo = { ...photo, dataUrl: url, enabled: true };
-          mutated = true;
-        }
-        break;
-      }
-      default: {
-        const _exhaustive: never = command;
-        void _exhaustive;
-        break;
-      }
+      break;
     }
-    if (mutated) {
-      draft.updatedAt = Date.now();
+    case "setDocument": {
+      const incoming = command.document as unknown as Record<string, unknown>;
+      const target = draft as unknown as Record<string, unknown>;
+      for (const [key, value] of Object.entries(incoming)) {
+        if (key === "updatedAt" || BLOCKED_PATH_KEYS.has(key)) continue;
+        if (isDeepEqual(target[key], value)) continue;
+        target[key] = value;
+        mutated = true;
+      }
+      break;
     }
-  });
+    case "addArrayItem": {
+      const arr = draft[command.key] as unknown[];
+      if (!Array.isArray(arr)) break;
+      if (arr.length >= (ARRAY_CAPS[command.key] ?? 100)) break;
+      arr.push(command.item);
+      mutated = true;
+      break;
+    }
+    case "removeArrayItem": {
+      const arr = draft[command.key] as unknown[];
+      if (!Array.isArray(arr) || !isValidIndex(arr, command.index)) break;
+      arr.splice(command.index, 1);
+      mutated = true;
+      break;
+    }
+    case "updateArrayItem": {
+      const arr = draft[command.key] as unknown[];
+      if (!Array.isArray(arr) || !isValidIndex(arr, command.index)) break;
+      if (arr[command.index] === command.item) break;
+      arr[command.index] = command.item;
+      mutated = true;
+      break;
+    }
+    default: {
+      const _exhaustive: never = command;
+      void _exhaustive;
+      break;
+    }
+  }
+  // No-op commands return the original reference so history can skip them.
+  if (!mutated) return doc;
+  draft.updatedAt = Date.now();
+  return draft;
 }
-
-export { getByPath };
 
 export function ensureSectionOrder(doc: ResumeDocument): string[] {
   return doc.sectionOrder?.length ? doc.sectionOrder : getDefaultSectionOrder();

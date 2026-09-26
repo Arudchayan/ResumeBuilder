@@ -6,8 +6,15 @@ import {
   HeadingLevel,
   ExternalHyperlink,
   AlignmentType,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  BorderStyle,
+  TableBorders,
+  TableLayoutType,
+  ShadingType,
 } from "docx";
-import { saveAs } from "file-saver";
 import type { ResumeDocument } from "@resume/core";
 import { documentToIr, type IrBlock } from "@resume/templates";
 
@@ -39,19 +46,6 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
             spacing: { after: 60 },
           }),
         );
-        break;
-      case "chips":
-        out.push(
-          new Paragraph({
-            children: [new TextRun({ text: block.items.join(" · "), size: 18 })],
-            spacing: { after: 80 },
-          }),
-        );
-        break;
-      case "bullets":
-        for (const item of block.items) {
-          out.push(new Paragraph({ text: item, bullet: { level: 0 } }));
-        }
         break;
       case "kv":
         out.push(
@@ -137,9 +131,6 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
         }
         break;
       }
-      case "spacer":
-        out.push(new Paragraph({ text: "" }));
-        break;
       default: {
         const _exhaustive: never = block;
         void _exhaustive;
@@ -150,27 +141,60 @@ function blocksToParagraphs(blocks: IrBlock[]): Paragraph[] {
   return out;
 }
 
-export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
+const SIDEBAR_TABLE_WIDTH_DXA = 9360;
+const SIDEBAR_ASIDE_WIDTH_DXA = 2995;
+const SIDEBAR_MAIN_WIDTH_DXA = SIDEBAR_TABLE_WIDTH_DXA - SIDEBAR_ASIDE_WIDTH_DXA;
+
+const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: "auto" } as const;
+const NO_CELL_BORDERS = {
+  top: NO_BORDER,
+  bottom: NO_BORDER,
+  left: NO_BORDER,
+  right: NO_BORDER,
+} as const;
+
+function paragraphsOrEmpty(blocks: IrBlock[]): Paragraph[] {
+  const paragraphs = blocksToParagraphs(blocks);
+  return paragraphs.length > 0 ? paragraphs : [new Paragraph({ text: "" })];
+}
+
+function buildSidebarTable(asideBlocks: IrBlock[], mainBlocks: IrBlock[]): Table {
+  return new Table({
+    width: { size: SIDEBAR_TABLE_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths: [SIDEBAR_ASIDE_WIDTH_DXA, SIDEBAR_MAIN_WIDTH_DXA],
+    layout: TableLayoutType.FIXED,
+    borders: TableBorders.NONE,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: SIDEBAR_ASIDE_WIDTH_DXA, type: WidthType.DXA },
+            borders: NO_CELL_BORDERS,
+            shading: { fill: "f0f8f9", type: ShadingType.CLEAR },
+            children: paragraphsOrEmpty(asideBlocks),
+          }),
+          new TableCell({
+            width: { size: SIDEBAR_MAIN_WIDTH_DXA, type: WidthType.DXA },
+            borders: NO_CELL_BORDERS,
+            children: paragraphsOrEmpty(mainBlocks),
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
   const ir = documentToIr(doc);
-  const page = ir.pages[0]!;
-  const paragraphs: Paragraph[] = [];
+  let children: (Paragraph | Table)[];
 
   if (ir.templateId === "sidebar") {
-    const aside = page.columns.find((c) => c.id === "aside");
-    const main = page.columns.find((c) => c.id === "main");
-    if (main) paragraphs.push(...blocksToParagraphs(main.blocks));
-    if (aside) {
-      paragraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: "Details & Skills", bold: true, size: 24 })],
-          spacing: { before: 300 },
-        }),
-      );
-      paragraphs.push(...blocksToParagraphs(aside.blocks.filter((b) => b.type !== "photo")));
-    }
+    const aside = ir.columns.find((c) => c.id === "aside");
+    const main = ir.columns.find((c) => c.id === "main");
+    children = [buildSidebarTable(aside?.blocks ?? [], main?.blocks ?? [])];
   } else {
-    const main = page.columns[0]!;
-    paragraphs.push(...blocksToParagraphs(main.blocks));
+    const main = ir.columns[0]!;
+    children = blocksToParagraphs(main.blocks);
   }
 
   const document = new Document({
@@ -178,8 +202,8 @@ export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
       {
         properties: {},
         children:
-          paragraphs.length > 0
-            ? paragraphs
+          children.length > 0
+            ? children
             : [
                 new Paragraph({
                   children: [new TextRun("Empty resume")],
@@ -193,7 +217,16 @@ export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
   return Packer.toBlob(document);
 }
 
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadDocx(doc: ResumeDocument, filename = "resume.docx") {
   const blob = await exportDocxBlob(doc);
-  saveAs(blob, filename);
+  downloadBlob(blob, filename);
 }

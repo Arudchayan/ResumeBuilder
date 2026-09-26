@@ -22,8 +22,8 @@ export function GalleryPage() {
 
   const onImport = async (file: File) => {
     try {
-      await importJsonFile(file);
-      toast.success("Resume imported");
+      const ok = await importJsonFile(file);
+      if (ok) toast.success("Resume imported");
     } catch (err) {
       console.error(err);
       toast.error("Could not import JSON — check it was exported from this builder");
@@ -38,7 +38,7 @@ export function GalleryPage() {
       >
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Resume Forge</h1>
+            <h1 className="text-xl font-bold text-slate-900">Resume Builder</h1>
             <p className="text-sm text-slate-500">Edit locally. Export PDF or DOCX. Your data stays in this browser.</p>
           </div>
           <nav aria-label="Product" className="flex flex-wrap items-center gap-2">
@@ -56,6 +56,7 @@ export function GalleryPage() {
                 className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
+                  e.target.value = "";
                   if (file) void onImport(file);
                 }}
               />

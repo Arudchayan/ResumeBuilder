@@ -7,13 +7,10 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "pnpm --filter @resume/web dev",
-    "build": "pnpm -r build",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
+    "build": "pnpm --filter @resume/web build",
+    "test": "vitest run",
     "test:e2e": "pnpm --filter @resume/web test:e2e",
-    "typecheck": "pnpm -r typecheck",
-    "pretest": "pnpm -r build",
-    "pretypecheck": "pnpm -r build"
+    "typecheck": "pnpm -r typecheck"
   },
   "keywords": [
     "resume",

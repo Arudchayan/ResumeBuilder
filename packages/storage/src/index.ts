@@ -2,39 +2,50 @@ import {
   blankResume,
   parseResumeData,
   parseResumeMeta,
-  validateResumeData,
   normalizeTemplateId,
+  normalizeThemeId,
   type ResumeDocument,
-  type TemplateId,
 } from "@resume/core";
-import type { ResumeLibraryPort, ResumeMeta, StoragePort } from "@resume/ports";
 
 const DB_NAME = "resume-builder-v2";
 const STORE = "resumes";
 const DB_VERSION = 1;
 const LEGACY_KEY = "resume_draft";
 const MIGRATED_FLAG = "resume_draft_migrated_v2";
+const QUARANTINE_KEY = "resume_draft_quarantine_v2";
+
+function newId(prefix: string): string {
+  try {
+    const uuid = globalThis.crypto?.randomUUID?.();
+    if (uuid) return uuid;
+  } catch {
+    // fall through to the Math.random fallback below
+  }
+  return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+}
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    let req: IDBOpenDBRequest;
     try {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(STORE)) {
-          db.createObjectStore(STORE, { keyPath: "id" });
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error ?? new Error("IndexedDB open failed"));
-      req.onblocked = () => reject(new Error("IndexedDB blocked: close other tabs and retry"));
+      req = indexedDB.open(DB_NAME, DB_VERSION);
     } catch (err) {
       reject(err instanceof Error ? err : new Error("IndexedDB unavailable"));
+      return;
     }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE, { keyPath: "id" });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error ?? new Error("IndexedDB open failed"));
+    req.onblocked = () => reject(new Error("IndexedDB upgrade blocked by another tab"));
   });
 }
 
-/** Migrate localStorage resume_draft → IndexedDB once. Never flags corrupt drafts as migrated. */
+/** Migrate localStorage resume_draft → IndexedDB once. */
 export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
   if (typeof localStorage === "undefined") return null;
   if (localStorage.getItem(MIGRATED_FLAG) === "1") return null;
@@ -47,28 +58,54 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
   try {
     parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    // Not JSON at all: quarantine and clear so boot doesn't retry forever.
-    localStorage.setItem("resume_draft_quarantine_v2", raw.slice(0, 20000));
-    localStorage.removeItem(LEGACY_KEY);
+    // Not JSON at all: quarantine the raw text so it is never retried,
+    // then flag as migrated so boot does not hit this every time.
+    try {
+      localStorage.setItem(QUARANTINE_KEY, raw.slice(0, 100_000));
+      localStorage.removeItem(LEGACY_KEY);
+    } catch {
+      // storage itself is broken; nothing more we can preserve
+    }
+    localStorage.setItem(MIGRATED_FLAG, "1");
     return null;
   }
-  delete parsed._savedAt;
-  parsed.template = normalizeTemplateId(parsed.template);
-  if (!parsed.id) parsed.id = globalThis.crypto?.randomUUID?.() ?? `migrated-${Date.now()}`;
-  const result = validateResumeData(parsed);
-  if (!result.success) {
-    localStorage.setItem("resume_draft_quarantine_v2", raw.slice(0, 20000));
+  try {
+    delete parsed._savedAt;
+    parsed.template = normalizeTemplateId(parsed.template);
+    parsed.theme = normalizeThemeId(parsed.theme);
+    if (!parsed.id) parsed.id = newId("legacy");
+    const doc = parseResumeData(parsed);
+    const storage = new IndexedDbStorage();
+    await storage.save(doc);
+    try {
+      localStorage.removeItem(LEGACY_KEY);
+    } catch {
+      // non-fatal: the migrated flag below prevents re-migration
+    }
+    localStorage.setItem(MIGRATED_FLAG, "1");
+    return doc;
+  } catch {
+    // Parseable JSON but invalid as a resume: quarantine for inspection,
+    // remove the legacy key, and flag so boot moves on.
+    try {
+      localStorage.setItem(QUARANTINE_KEY, raw.slice(0, 100_000));
+      localStorage.removeItem(LEGACY_KEY);
+    } catch {
+      // storage itself is broken; nothing more we can preserve
+    }
+    localStorage.setItem(MIGRATED_FLAG, "1");
     return null;
   }
-  const storage = new IndexedDbStorage();
-  await storage.save(result.data);
-  localStorage.setItem(`${MIGRATED_FLAG}_backup`, raw.slice(0, 100000));
-  localStorage.removeItem(LEGACY_KEY);
-  localStorage.setItem(MIGRATED_FLAG, "1");
-  return result.data;
 }
 
-export class IndexedDbStorage implements StoragePort {
+export type ResumeMeta = {
+  id: string;
+  title: string;
+  template: string;
+  updatedAt: number;
+};
+
+export class IndexedDbStorage {
   async load(id: string): Promise<ResumeDocument | null> {
     const db = await openDb();
     return new Promise((resolve, reject) => {
@@ -76,7 +113,11 @@ export class IndexedDbStorage implements StoragePort {
       const req = tx.objectStore(STORE).get(id);
       req.onsuccess = () => {
         const value = req.result;
-        resolve(value ? parseResumeData(value) : null);
+        try {
+          resolve(value ? parseResumeData(value) : null);
+        } catch (err) {
+          reject(err);
+        }
       };
       req.onerror = () => reject(req.error);
     });
@@ -93,31 +134,6 @@ export class IndexedDbStorage implements StoragePort {
     });
   }
 
-  async list(): Promise<ResumeMeta[]> {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, "readonly");
-      const req = tx.objectStore(STORE).getAll();
-      req.onsuccess = () => {
-        const rows = (req.result as unknown[]) ?? [];
-        const metas: ResumeMeta[] = [];
-        for (const row of rows) {
-          const parsed = parseResumeMeta(row);
-          if (!parsed.success) continue;
-          const d = parsed.data;
-          metas.push({
-            id: d.id || "unknown",
-            title: d.name || "Untitled resume",
-            template: normalizeTemplateId(d.template),
-            updatedAt: d.updatedAt || 0,
-          });
-        }
-        resolve(metas.sort((a, b) => b.updatedAt - a.updatedAt));
-      };
-      req.onerror = () => reject(req.error);
-    });
-  }
-
   async delete(id: string): Promise<void> {
     const db = await openDb();
     return new Promise((resolve, reject) => {
@@ -127,83 +143,38 @@ export class IndexedDbStorage implements StoragePort {
       tx.onerror = () => reject(tx.error);
     });
   }
-}
 
-export class LocalResumeLibrary implements ResumeLibraryPort {
-  constructor(private storage: StoragePort = new IndexedDbStorage()) {}
-
-  list() {
-    return this.storage.list();
+  async list(): Promise<ResumeMeta[]> {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const req = tx.objectStore(STORE).getAll();
+      req.onsuccess = () => {
+        const rows = (req.result as unknown[]) ?? [];
+        // Loose meta parse: a row with a strict body field still shows up;
+        // full validation happens on load().
+        const metas: ResumeMeta[] = [];
+        for (const row of rows) {
+          const meta = parseResumeMeta(row);
+          if (!meta) continue;
+          metas.push({
+            id: meta.id,
+            title: meta.name || "Untitled resume",
+            template: meta.template,
+            updatedAt: meta.updatedAt,
+          });
+        }
+        resolve(metas.sort((a, b) => b.updatedAt - a.updatedAt));
+      };
+      req.onerror = () => reject(req.error);
+    });
   }
 
-  async create(template = "sidebar") {
-    const doc = blankResume({
-      template: normalizeTemplateId(template),
-    });
-    await this.storage.save(doc);
+  async create(template = "sidebar"): Promise<ResumeDocument> {
+    const doc = blankResume({ template: normalizeTemplateId(template) });
+    await this.save(doc);
     return doc;
   }
-
-  get(id: string) {
-    return this.storage.load(id);
-  }
-
-  save(doc: ResumeDocument) {
-    return this.storage.save(doc);
-  }
-
-  async duplicate(id: string) {
-    const existing = await this.storage.load(id);
-    if (!existing) throw new Error("Resume not found");
-    const copy = blankResume({
-      ...existing,
-      id: crypto.randomUUID?.() ?? `copy-${Date.now()}`,
-      name: existing.name ? `${existing.name} (copy)` : "Untitled resume (copy)",
-    });
-    await this.storage.save(copy);
-    return copy;
-  }
-
-  delete(id: string) {
-    return this.storage.delete(id);
-  }
 }
 
-export function exportResumeJson(doc: ResumeDocument): string {
-  return JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), resume: doc }, null, 2);
-}
-
-export function importResumeJson(raw: string): ResumeDocument {
-  if (raw.length > 10_000_000) throw new Error("Import too large (max 10MB)");
-  const parsed = JSON.parse(raw) as unknown;
-  const payload =
-    parsed && typeof parsed === "object" && "resume" in (parsed as Record<string, unknown>)
-      ? (parsed as Record<string, unknown>).resume
-      : parsed;
-  return parseResumeData(payload);
-}
-
-/** In-memory adapter for tests / SSR. */
-export class MemoryStorage implements StoragePort {
-  private map = new Map<string, ResumeDocument>();
-
-  async load(id: string) {
-    return this.map.get(id) ?? null;
-  }
-  async save(doc: ResumeDocument) {
-    this.map.set(doc.id, { ...doc, updatedAt: Date.now() });
-  }
-  async list(): Promise<ResumeMeta[]> {
-    return [...this.map.values()]
-      .map((d) => ({
-        id: d.id,
-        title: d.name || "Untitled resume",
-        template: d.template,
-        updatedAt: d.updatedAt || 0,
-      }))
-      .sort((a, b) => b.updatedAt - a.updatedAt);
-  }
-  async delete(id: string) {
-    this.map.delete(id);
-  }
-}
+export { newId as newResumeId };

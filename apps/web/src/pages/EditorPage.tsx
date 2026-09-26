@@ -1,24 +1,22 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { SECTION_CONFIG, ensureSectionOrder } from "@resume/core";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { SECTION_CONFIG, ensureSectionOrder, type ResumeDocument } from "@resume/core";
-import { documentToIr, ResumePreview, TEMPLATES } from "@resume/templates";
-import { Button, themeCssVars } from "@resume/ui";
+  PAPER_PRESETS,
+  applyOnePageVisibility,
+  defaultSkillsDensity,
+  documentToIr,
+  findPageCrossings,
+  measureSheetPages,
+  ResumePreview,
+  suggestFitStep,
+  TEMPLATES,
+  trimOlderJobs,
+  type PageCrossing,
+  type PaperId,
+  type SheetPageMetrics,
+  type SkillsDensity,
+} from "@resume/templates";
+import { Button, themes, themeCssVars } from "@resume/ui";
 import {
   Check,
   Download,
@@ -34,47 +32,56 @@ import {
   Printer,
   Redo2,
   RotateCcw,
+  Ruler,
   Undo2,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import { toast } from "sonner";
-import { sanitizeFilename, selectDoc, useAppStore } from "../lib/store";
+import { downloadDocx } from "@resume/export";
+import { useAppStore, sanitizeFilename } from "../lib/store";
 import { SectionEditor } from "../components/SectionEditor";
 
-function SortableTocItem({
-  id,
+function TocItem({
   label,
   required,
   active,
   visible,
+  first,
+  last,
   onSelect,
   onToggleVisible,
+  onMove,
 }: {
-  id: string;
   label: string;
   required: boolean;
   active: boolean;
   visible: boolean;
+  first: boolean;
+  last: boolean;
   onSelect: () => void;
   onToggleVisible: () => void;
+  onMove: (direction: -1 | 1) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.58 : 1,
-  };
-
   return (
-    <li ref={setNodeRef} style={style} className={`toc-item ${active ? "is-active" : ""}`}>
+    <li className={`toc-item ${active ? "is-active" : ""}`}>
       <button
         type="button"
         className="toc-grip"
-        aria-label={`Drag to reorder ${label}`}
-        title={`Reorder ${label}`}
-        {...attributes}
-        {...listeners}
+        aria-label={`Move ${label} up`}
+        title={`Move ${label} up`}
+        disabled={first}
+        onClick={() => onMove(-1)}
+      >
+        <GripVertical className="h-4 w-4 rotate-180" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className="toc-grip"
+        aria-label={`Move ${label} down`}
+        title={`Move ${label} down`}
+        disabled={last}
+        onClick={() => onMove(1)}
       >
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -113,7 +120,7 @@ function formatSavedTime(timestamp: number | null) {
 }
 
 export function EditorPage() {
-  const doc = useAppStore(selectDoc);
+  const doc = useAppStore((s) => s.history.present);
   const apply = useAppStore((s) => s.apply);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
@@ -134,7 +141,17 @@ export function EditorPage() {
   const [contentPadding, setContentPadding] = useState(48);
   const [fontScale, setFontScale] = useState(100);
   const [previewMode, setPreviewMode] = useState<"fit" | "inspect">("fit");
+  const [showPageGuides, setShowPageGuides] = useState(true);
+  const [paperId, setPaperId] = useState<PaperId>("a4");
+  const [skillsDensity, setSkillsDensity] = useState<SkillsDensity>(() => defaultSkillsDensity(doc));
+  const [pageMetrics, setPageMetrics] = useState<SheetPageMetrics>({
+    pages: 1,
+    heightMm: PAPER_PRESETS.a4.heightMm,
+    overflowMm: 0,
+  });
+  const [crossings, setCrossings] = useState<PageCrossing[]>([]);
   const previewHostRef = useRef<HTMLDivElement>(null);
+  const paper = PAPER_PRESETS[paperId];
 
   const order = ensureSectionOrder(doc);
   const deferredDoc = useDeferredValue(doc);
@@ -142,16 +159,19 @@ export function EditorPage() {
   const cssVars = themeCssVars(doc.theme);
   const activeMeta = SECTION_CONFIG.find((section) => section.id === activeSection);
   const visibleCount = order.filter((id) => doc.sectionVisibility?.[id] !== false).length;
+  const pageSummary =
+    pageMetrics.pages === 1
+      ? `Exports as 1 × ${paper.name} page`
+      : `Exports as ${pageMetrics.pages} × ${paper.name} pages`;
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  useEffect(() => {
+    setSkillsDensity(defaultSkillsDensity(doc));
+  }, [doc.id, doc.skills?.length]);
 
   const fitPreview = () => {
     const host = previewHostRef.current;
     if (!host) return;
-    const sheetPx = (210 / 25.4) * 96;
+    const sheetPx = (paper.widthMm / 25.4) * 96;
     const available = Math.max(280, host.clientWidth - 48);
     setZoom(Math.min(1, Math.max(0.45, available / sheetPx)));
   };
@@ -162,7 +182,30 @@ export function EditorPage() {
     const onResize = () => fitPreview();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [previewMode]);
+  }, [previewMode, paperId]);
+
+  useEffect(() => {
+    const host = previewHostRef.current;
+    if (!host) return;
+
+    const updateMetrics = () => {
+      const sheet = host.querySelector<HTMLElement>(".sheet");
+      if (!sheet) return;
+      setPageMetrics(measureSheetPages(sheet, paper));
+      setCrossings(findPageCrossings(sheet, paper));
+    };
+
+    updateMetrics();
+    const observer = new ResizeObserver(() => updateMetrics());
+    const sheet = host.querySelector<HTMLElement>(".sheet");
+    if (sheet) observer.observe(sheet);
+    observer.observe(host);
+    window.addEventListener("resize", updateMetrics);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateMetrics);
+    };
+  }, [doc, paper, contentPadding, fontScale, zoom, mobilePane, previewMode, skillsDensity]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -186,42 +229,106 @@ export function EditorPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [redo, saveNow, undo]);
 
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = order.indexOf(String(active.id));
-    const newIndex = order.indexOf(String(over.id));
-    if (oldIndex < 0 || newIndex < 0) return;
-    apply({ type: "reorderSections", order: arrayMove(order, oldIndex, newIndex) });
+  const moveSection = (id: string, direction: -1 | 1) => {
+    const from = order.indexOf(id);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= order.length) return;
+    const next = [...order];
+    const [moved] = next.splice(from, 1);
+    if (moved === undefined) return;
+    next.splice(to, 0, moved);
+    apply({ type: "setField", path: "sectionOrder", value: next });
   };
 
   const runExport = async (kind: "pdf" | "docx") => {
     setExporting(kind);
     try {
-      const { downloadPdf, downloadDocx } = await import("@resume/export");
-      const filename = sanitizeFilename(doc.name || "resume", "");
+      const filename = sanitizeFilename(doc.name, "");
       if (kind === "pdf") {
-        const sheet =
-          previewHostRef.current?.querySelector<HTMLElement>(".sheet") ?? document.querySelector<HTMLElement>(".sheet");
-        await downloadPdf(doc, `${filename}.pdf`, sheet);
+        window.print();
+        toast.success("Use the print dialog — choose “Save as PDF”");
       } else {
         await downloadDocx(doc, `${filename}.docx`);
       }
-      toast.success(kind === "pdf" ? "PDF downloaded" : "DOCX downloaded");
     } catch (error) {
       console.error(error);
-      toast.error("Export failed. Check the resume content and try again.");
+      const message = error instanceof Error && error.message ? error.message : "Export failed";
+      toast.error(`${message}. Check the resume content and try again.`);
     } finally {
       setExporting(null);
     }
   };
 
-  return (
-    <div className="workspace-page" style={cssVars as CSSProperties}>
-      <a href="#main" className="skip-to-content">
-        Skip to editor
-      </a>
+  const fitToPages = async (
+    targetPages: number,
+    seed?: { fontScale: number; contentPadding: number },
+  ) => {
+    let nextFont = seed?.fontScale ?? fontScale;
+    let nextPad = seed?.contentPadding ?? contentPadding;
+    let currentPages = pageMetrics.pages;
+    setSkillsDensity("compact");
+    setFontScale(nextFont);
+    setContentPadding(nextPad);
+    await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
 
+    for (let step = 0; step < 12; step++) {
+      const sheet = previewHostRef.current?.querySelector<HTMLElement>(".sheet");
+      if (sheet) {
+        const metrics = measureSheetPages(sheet, paper);
+        currentPages = metrics.pages;
+        setPageMetrics(metrics);
+      }
+      if (currentPages <= targetPages) {
+        toast.success(`Fitted to ${currentPages} × ${paper.name}`);
+        return;
+      }
+      const suggestion = suggestFitStep({
+        currentPages,
+        targetPages,
+        fontScale: nextFont,
+        contentPadding: nextPad,
+      });
+      if (!suggestion) break;
+      nextFont = suggestion.fontScale;
+      nextPad = suggestion.contentPadding;
+      setFontScale(nextFont);
+      setContentPadding(nextPad);
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
+    }
+    const sheet = previewHostRef.current?.querySelector<HTMLElement>(".sheet");
+    const finalPages = sheet ? measureSheetPages(sheet, paper).pages : currentPages;
+    toast.message(
+      finalPages <= targetPages
+        ? `Fitted to ${finalPages} × ${paper.name}`
+        : `Still ${finalPages} pages — try trim modes or hide sections`,
+    );
+  };
+
+  const applyTrimMode = (mode: "one-page" | "recent-jobs" | "compact-skills") => {
+    if (mode === "compact-skills") {
+      setSkillsDensity("compact");
+      toast.success("Compact skills applied");
+      return;
+    }
+    if (mode === "one-page") {
+      const visibility = applyOnePageVisibility(doc);
+      apply({ type: "setDocument", document: { ...doc, sectionVisibility: visibility } });
+      void fitToPages(1, { fontScale: 90, contentPadding: 32 });
+      return;
+    }
+    if (mode === "recent-jobs") {
+      const trimmed = trimOlderJobs(doc, 3);
+      if (trimmed.jobs.length === doc.jobs.length) {
+        toast.message("Already showing 3 or fewer roles");
+        return;
+      }
+      apply({ type: "setDocument", document: trimmed });
+      toast.success("Kept 3 most recent roles (undo with Ctrl/Cmd+Z)");
+    }
+  };
+
+  return (
+    <div className="workspace-page" style={cssVars}>
       <header className="workspace-header" role="banner">
         <div className="workspace-header-inner">
           <button type="button" className="brand-lockup" onClick={() => setScreen("gallery")}>
@@ -331,37 +438,35 @@ export function EditorPage() {
             </div>
             <p className="panel-hint">Choose a section to edit. Drag to change its order, or hide it from the resume.</p>
 
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={order} strategy={verticalListSortingStrategy}>
-                <ul className="toc-list" aria-label="Resume sections">
-                  {order.map((id) => {
-                    const meta = SECTION_CONFIG.find((section) => section.id === id);
-                    const isVisible = doc.sectionVisibility?.[id] !== false;
-                    return (
-                      <SortableTocItem
-                        key={id}
-                        id={id}
-                        label={meta?.label ?? id}
-                        required={Boolean(meta?.required)}
-                        active={activeSection === id}
-                        visible={isVisible}
-                        onSelect={() => {
-                          setActiveSection(id);
-                          setMobilePane("edit");
-                        }}
-                        onToggleVisible={() =>
-                          apply({
-                            type: "setSectionVisibility",
-                            id,
-                            visible: !isVisible,
-                          })
-                        }
-                      />
-                    );
-                  })}
-                </ul>
-              </SortableContext>
-            </DndContext>
+            <ul className="toc-list" aria-label="Resume sections">
+              {order.map((id, index) => {
+                const meta = SECTION_CONFIG.find((section) => section.id === id);
+                const isVisible = doc.sectionVisibility?.[id] !== false;
+                return (
+                  <TocItem
+                    key={id}
+                    label={meta?.label ?? id}
+                    required={Boolean(meta?.required)}
+                    active={activeSection === id}
+                    visible={isVisible}
+                    first={index === 0}
+                    last={index === order.length - 1}
+                    onSelect={() => {
+                      setActiveSection(id);
+                      setMobilePane("edit");
+                    }}
+                    onToggleVisible={() =>
+                      apply({
+                        type: "setField",
+                        path: `sectionVisibility.${id}`,
+                        value: !isVisible,
+                      })
+                    }
+                    onMove={(direction) => moveSection(id, direction)}
+                  />
+                );
+              })}
+            </ul>
 
             <div className="sidebar-settings">
               <span className="settings-label">Appearance</span>
@@ -371,16 +476,13 @@ export function EditorPage() {
                   id="theme-select"
                   className="select-control w-full rounded-xl border bg-white px-3 py-2 text-sm"
                   value={doc.theme}
-                  onChange={(event) => apply({ type: "setTheme", theme: event.target.value })}
+                  onChange={(event) => apply({ type: "setField", path: "theme", value: event.target.value })}
                 >
-                  <option value="teal">Teal</option>
-                  <option value="blue">Professional Blue</option>
-                  <option value="purple">Creative Purple</option>
-                  <option value="green">Nature Green</option>
-                  <option value="slate">Classic Gray</option>
-                  <option value="black">Executive Black</option>
-                  <option value="forest">Forest</option>
-                  <option value="copper">Copper</option>
+                  {Object.entries(themes).map(([id, theme]) => (
+                    <option key={id} value={id}>
+                      {theme.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="field-stack" htmlFor="template-select">
@@ -389,9 +491,7 @@ export function EditorPage() {
                   id="template-select"
                   className="select-control w-full rounded-xl border bg-white px-3 py-2 text-sm"
                   value={doc.template}
-                  onChange={(event) =>
-                    apply({ type: "setTemplate", template: event.target.value as ResumeDocument["template"] })
-                  }
+                  onChange={(event) => apply({ type: "setField", path: "template", value: event.target.value })}
                 >
                   {TEMPLATES.map((template) => (
                     <option key={template.id} value={template.id}>
@@ -447,9 +547,52 @@ export function EditorPage() {
                 <p className="eyebrow">Live canvas</p>
                 <h2 className="panel-title">Preview resume</h2>
               </div>
-              <span className="section-state">A4 · {Math.round(zoom * 100)}%</span>
+              <span className="section-state" data-testid="paper-meta">
+                {paper.label} · {Math.round(zoom * 100)}%
+              </span>
+            </div>
+            <div className="page-metrics-bar" role="status" aria-live="polite">
+              <div className="page-metrics-main">
+                <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
+                <strong data-testid="page-count-label">{pageSummary}</strong>
+                <span className="page-metrics-detail" data-testid="paper-size-detail">
+                  Paper {paper.label}
+                  {" · "}
+                  content ~{Math.round(pageMetrics.heightMm)} mm
+                  {pageMetrics.pages > 1
+                    ? ` · ${Math.round(pageMetrics.overflowMm)} mm past page 1`
+                    : " · fits on one page"}
+                </span>
+              </div>
+              {crossings.length > 0 ? (
+                <p className="page-metrics-hint" data-testid="overflow-warnings">
+                  Crosses a page edge:{" "}
+                  {crossings
+                    .slice(0, 4)
+                    .map((c) => `${c.label} (p.${c.crossesPage})`)
+                    .join(" · ")}
+                  {crossings.length > 4 ? ` · +${crossings.length - 4} more` : ""}
+                </p>
+              ) : null}
+              {pageMetrics.pages >= 3 ? (
+                <p className="page-metrics-hint">
+                  Long resume — use Fit to 2 pages, compact skills, or trim older roles.
+                </p>
+              ) : null}
             </div>
             <div className="preview-toolbar">
+              <label className="range-control" htmlFor="paper-select">
+                Paper
+                <select
+                  id="paper-select"
+                  className="select-control rounded-lg border bg-white px-2 py-1 text-xs"
+                  value={paperId}
+                  onChange={(event) => setPaperId(event.target.value as PaperId)}
+                >
+                  <option value="a4">A4</option>
+                  <option value="letter">Letter</option>
+                </select>
+              </label>
               <Button variant="ghost" aria-label="Zoom out" title="Zoom out" onClick={() => { setPreviewMode("inspect"); setZoom(zoom - 0.05); }}>
                 <ZoomOut className="h-4 w-4" aria-hidden="true" />
               </Button>
@@ -478,11 +621,56 @@ export function EditorPage() {
                 <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Full size
               </Button>
               <Button
+                variant={showPageGuides ? "primary" : "secondary"}
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                aria-pressed={showPageGuides}
+                onClick={() => setShowPageGuides((value) => !value)}
+              >
+                <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
+                {showPageGuides ? "Hide guides" : "Show guides"}
+              </Button>
+              <Button
+                variant="secondary"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => void fitToPages(2)}
+              >
+                Fit to 2 pages
+              </Button>
+              <Button
+                variant="secondary"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => void fitToPages(1)}
+              >
+                Fit to 1 page
+              </Button>
+              <Button
+                variant={skillsDensity === "compact" ? "primary" : "secondary"}
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => applyTrimMode("compact-skills")}
+              >
+                Compact skills
+              </Button>
+              <Button
+                variant="secondary"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => applyTrimMode("recent-jobs")}
+              >
+                Keep 3 roles
+              </Button>
+              <Button
+                variant="secondary"
+                className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
+                onClick={() => applyTrimMode("one-page")}
+              >
+                1-page mode
+              </Button>
+              <Button
                 variant="ghost"
                 className="!min-h-9 !rounded-lg !px-2.5 !py-1.5 text-xs"
                 onClick={() => {
                   setContentPadding(48);
                   setFontScale(100);
+                  setSkillsDensity(defaultSkillsDensity(doc));
                   setPreviewMode("fit");
                   requestAnimationFrame(fitPreview);
                   toast.success("Preview layout reset");
@@ -520,11 +708,13 @@ export function EditorPage() {
             </div>
             <div ref={previewHostRef} className={`preview-stage ${previewMode === "inspect" ? "is-inspecting" : ""}`}>
               <ResumePreview
-                doc={doc}
                 ir={ir}
                 zoom={zoom}
                 contentPadding={contentPadding}
                 fontScale={fontScale}
+                pageCount={pageMetrics.pages}
+                showPageGuides={showPageGuides}
+                paperId={paperId}
                 onSectionClick={(sectionId) => {
                   setActiveSection(sectionId);
                   setMobilePane("edit");
