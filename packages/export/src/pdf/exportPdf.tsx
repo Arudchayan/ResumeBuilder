@@ -6,6 +6,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
   pdf,
   Link,
@@ -178,7 +179,7 @@ function stylesFor(themeId: string) {
   });
 }
 
-function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof stylesFor> }) {
+function PdfBlocks({ blocks, s, accent }: { blocks: IrBlock[]; s: ReturnType<typeof stylesFor>; accent: string }) {
   return (
     <>
       {blocks.map((block, i) => {
@@ -212,14 +213,37 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
                 ))}
               </View>
             );
-          case "kv":
-          case "link":
-            return (
+          case "kv": {
+            const label = "label" in block ? `${block.label}: ` : "";
+            const value = "value" in block ? block.value : "";
+            const href = "href" in block && block.href ? block.href : "";
+            return href ? (
               <Text key={key} style={s.p}>
-                {"label" in block ? `${block.label}: ` : ""}
-                {"value" in block ? block.value : "href" in block ? block.href : ""}
+                {label}
+                <Link src={href} style={{ color: accent }}>
+                  {value || href}
+                </Link>
+              </Text>
+            ) : (
+              <Text key={key} style={s.p}>
+                {label}
+                {value}
               </Text>
             );
+          }
+          case "link": {
+            const href = "href" in block ? block.href : "";
+            const label = "label" in block ? block.label : href;
+            return href ? (
+              <Link key={key} src={href} style={{ fontSize: 10, color: accent }}>
+                {label}
+              </Link>
+            ) : (
+              <Text key={key} style={s.p}>
+                {label}
+              </Text>
+            );
+          }
           case "lineItem":
             return (
               <Text key={key} style={s.p}>
@@ -233,7 +257,7 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
                 {block.subtitle ? <Text style={s.p}>{block.subtitle}</Text> : null}
                 {block.meta ? <Text style={s.p}>{block.meta}</Text> : null}
                 {block.url ? (
-                  <Link src={block.url} style={{ fontSize: 8, color: "#0f766e" }}>
+                  <Link src={block.url} style={{ fontSize: 8, color: accent }}>
                     {block.url}
                   </Link>
                 ) : null}
@@ -257,7 +281,16 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
               </View>
             );
           case "accentBar":
-          case "photo":
+            return <View key={key} style={{ height: 3, width: 48, backgroundColor: accent, marginTop: 8, marginBottom: 8 }} />;
+          case "photo": {
+            const src = "src" in block ? block.src : "";
+            return src ? (
+              // eslint-disable-next-line jsx-a11y/alt-text
+              <Image key={key} src={src} style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }} />
+            ) : (
+              <View key={key} style={{ height: 6 }} />
+            );
+          }
           case "spacer":
             return <View key={key} style={{ height: 6 }} />;
           default: {
@@ -274,11 +307,31 @@ function PdfBlocks({ blocks, s }: { blocks: IrBlock[]; s: ReturnType<typeof styl
 async function exportPdfFromIr(doc: ResumeDocument): Promise<Blob> {
   const ir = documentToIr(doc);
   const s = stylesFor(ir.themeId);
-  const blocks = ir.pages[0]?.columns.flatMap((c) => c.blocks) ?? [];
+  const theme = themes[ir.themeId as ThemeId] ?? themes.teal;
+  const page = ir.pages[0];
+  const columns = page?.columns ?? [];
   const instance = pdf(
     <Document>
       <Page size="A4" style={s.page}>
-        <PdfBlocks blocks={blocks} s={s} />
+        {columns.length > 1 ? (
+          // Percent widths must sum to 100: spacing comes from inner
+          // padding, not gap, or the row overflows the content width.
+          <View style={{ flexDirection: "row" }}>
+            {columns.map((col, idx) => (
+              <View
+                key={col.id}
+                style={{
+                  width: `${Math.round(col.width * 100)}%`,
+                  paddingRight: idx < columns.length - 1 ? 12 : 0,
+                }}
+              >
+                <PdfBlocks blocks={col.blocks} s={s} accent={theme.dark} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <PdfBlocks blocks={columns[0]?.blocks ?? []} s={s} accent={theme.dark} />
+        )}
       </Page>
     </Document>,
   );

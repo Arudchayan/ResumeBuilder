@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { ArrayKey, ResumeCommand, ResumeDocument } from "@resume/core";
+
+import { toast } from "sonner";
 import { Button, Field, TextAreaField } from "@resume/ui";
 import { Plus, Trash2, Upload } from "lucide-react";
 
@@ -123,15 +125,28 @@ export function SectionEditor({ doc, sectionId, apply }: Props) {
                 <Upload className="h-4 w-4 text-[var(--theme-dark)]" aria-hidden="true" /> Choose an image
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp"
                   className="sr-only"
+                  aria-label="Upload resume photo"
                   onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file || file.size > 5 * 1024 * 1024) return;
+                    const input = event.target;
+                    const file = input.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error("Photo too large — JPG, PNG, or WebP up to 5 MB.");
+                      input.value = "";
+                      return;
+                    }
                     const reader = new FileReader();
+                    reader.onerror = () => {
+                      toast.error("Could not read that image file.");
+                      input.value = "";
+                    };
                     reader.onload = () => {
-                      apply({ type: "setField", path: "photo.dataUrl", value: String(reader.result || "") });
-                      apply({ type: "setField", path: "photo.enabled", value: true });
+                      // Relative command: merges into current state on apply,
+                      // so keystrokes typed while the file loads are preserved.
+                      apply({ type: "setPhoto", dataUrl: String(reader.result || "") });
+                      input.value = "";
                     };
                     reader.readAsDataURL(file);
                   }}

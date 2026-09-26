@@ -75,7 +75,10 @@ export function ClassicSidebarSheet({
   const mainSectionIds = ["employment", "projects", "certs", "edus", "languages", "publications", "awards"];
   const order = (ensureSectionOrder(doc).filter((id) => mainSectionIds.includes(id)) as string[]) || mainSectionIds;
 
-  const click = (id: string) => (onSectionClick ? { onClick: () => onSectionClick(id), role: "button" as const, tabIndex: 0 } : {});
+  // Pointer shortcut only: keyboard users select sections via the
+  // editor's section list (real buttons), so preview blocks stay
+  // mouse-only and never become role=button keyboard traps.
+  const click = (id: string) => (onSectionClick ? { onClick: () => onSectionClick(id), style: { cursor: "pointer" } } : {});
 
   const sectionNodes: Record<string, ReactNode> = {
     employment:

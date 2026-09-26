@@ -162,12 +162,11 @@ export async function exportDocxBlob(doc: ResumeDocument): Promise<Blob> {
     if (aside) {
       paragraphs.push(
         new Paragraph({
-          text: "Details & Skills",
-          heading: HeadingLevel.HEADING_2,
+          children: [new TextRun({ text: "Details & Skills", bold: true, size: 24 })],
           spacing: { before: 300 },
         }),
       );
-      paragraphs.push(...blocksToParagraphs(aside.blocks));
+      paragraphs.push(...blocksToParagraphs(aside.blocks.filter((b) => b.type !== "photo")));
     }
   } else {
     const main = page.columns[0]!;

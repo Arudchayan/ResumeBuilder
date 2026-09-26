@@ -1,7 +1,7 @@
 export const themes = {
   teal: {
     name: "Teal",
-    primary: "#14b8a6",
+    primary: "#0f766e",
     dark: "#0f766e",
     light: "#5eead4",
     surface: "#f0f8f9",
@@ -9,7 +9,7 @@ export const themes = {
   },
   blue: {
     name: "Professional Blue",
-    primary: "#3b82f6",
+    primary: "#1d4ed8",
     dark: "#1e40af",
     light: "#93c5fd",
     surface: "#eff6ff",
@@ -17,7 +17,7 @@ export const themes = {
   },
   purple: {
     name: "Creative Purple",
-    primary: "#a855f7",
+    primary: "#7e22ce",
     dark: "#7e22ce",
     light: "#d8b4fe",
     surface: "#faf5ff",
@@ -25,7 +25,7 @@ export const themes = {
   },
   green: {
     name: "Nature Green",
-    primary: "#22c55e",
+    primary: "#15803d",
     dark: "#15803d",
     light: "#86efac",
     surface: "#f0fdf4",

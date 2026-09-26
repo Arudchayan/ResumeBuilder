@@ -295,8 +295,8 @@ export function documentToIr(doc: ResumeDocument): LayoutIr {
       pages: [
         {
           columns: [
-            { id: "aside", width: 0.32, blocks: aside },
-            { id: "main", width: 0.68, blocks: main },
+            { id: "aside", width: 0.3, blocks: aside },
+            { id: "main", width: 0.7, blocks: main },
           ],
         },
       ],

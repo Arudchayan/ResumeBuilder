@@ -29,7 +29,7 @@ export function undo(history: HistoryState): HistoryState {
   return {
     past: history.past.slice(0, -1),
     present: previous,
-    future: [history.present, ...history.future],
+    future: [history.present, ...history.future].slice(0, MAX_HISTORY),
   };
 }
 
@@ -37,7 +37,7 @@ export function redo(history: HistoryState): HistoryState {
   if (history.future.length === 0) return history;
   const next = history.future[0]!;
   return {
-    past: [...history.past, history.present],
+    past: [...history.past, history.present].slice(-MAX_HISTORY),
     present: next,
     future: history.future.slice(1),
   };

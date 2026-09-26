@@ -1,4 +1,4 @@
-import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { ResumeDocument } from "@resume/core";
 import type { LayoutIr, IrBlock } from "../ir/documentToIr.js";
 import { themeCssVars } from "@resume/ui";
@@ -15,15 +15,9 @@ function BlockView({
 }) {
   const clickable = block.sectionId
     ? {
-        role: "button" as const,
-        tabIndex: 0,
         onClick: () => onSectionClick?.(block.sectionId!),
-        onKeyDown: (e: KeyboardEvent) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onSectionClick?.(block.sectionId!);
-          }
-        },
+        style: { cursor: onSectionClick ? ("pointer" as const) : undefined },
+        ["data-section" as string]: block.sectionId,
       }
     : {};
 
@@ -96,12 +90,17 @@ function BlockView({
       );
     case "link":
       return (
-        <a href={block.href} className="block text-[12px] font-medium text-[var(--theme-primary)]" {...clickable}>
+        <a
+          href={block.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-[12px] font-medium text-[var(--theme-dark)] underline-offset-2 hover:underline"
+        >
           {block.label}
         </a>
       );
     case "photo":
-      return <img src={block.src} alt="" className="mb-3 h-24 w-24 rounded-full object-cover" />;
+      return <img src={block.src} alt="Resume photo" className="mb-3 h-24 w-24 rounded-full object-cover" />;
     case "lineItem":
       return (
         <div className="my-1 text-[12.5px]" {...clickable}>
@@ -169,7 +168,7 @@ export function ResumePreview({
     return (
       <div
         className={`origin-top-left ${className}`}
-        style={{ transform: `scale(${zoom})`, width: `calc(210mm * ${zoom})` }}
+        style={{ transform: `scale(${zoom})`, width: "210mm" }}
       >
         <ClassicSidebarSheet
           doc={doc}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   DndContext,
   closestCenter,
@@ -39,7 +39,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { toast } from "sonner";
-import { selectDoc, useAppStore } from "../lib/store";
+import { sanitizeFilename, selectDoc, useAppStore } from "../lib/store";
 import { SectionEditor } from "../components/SectionEditor";
 
 function SortableTocItem({
@@ -117,7 +117,8 @@ export function EditorPage() {
   const apply = useAppStore((s) => s.apply);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
-  const history = useAppStore((s) => s.history);
+  const canUndo = useAppStore((s) => s.history.past.length > 0);
+  const canRedo = useAppStore((s) => s.history.future.length > 0);
   const activeSection = useAppStore((s) => s.activeSection);
   const setActiveSection = useAppStore((s) => s.setActiveSection);
   const zoom = useAppStore((s) => s.zoom);
@@ -136,7 +137,8 @@ export function EditorPage() {
   const previewHostRef = useRef<HTMLDivElement>(null);
 
   const order = ensureSectionOrder(doc);
-  const ir = useMemo(() => documentToIr(doc), [doc]);
+  const deferredDoc = useDeferredValue(doc);
+  const ir = useMemo(() => documentToIr(deferredDoc), [deferredDoc]);
   const cssVars = themeCssVars(doc.theme);
   const activeMeta = SECTION_CONFIG.find((section) => section.id === activeSection);
   const visibleCount = order.filter((id) => doc.sectionVisibility?.[id] !== false).length;
@@ -168,7 +170,9 @@ export function EditorPage() {
       if (!mod) return;
       if (event.key.toLowerCase() === "s") {
         event.preventDefault();
-        void saveNow().then(() => toast.success("Resume saved"));
+        void saveNow().then((ok) => {
+          if (ok) toast.success("Resume saved");
+        });
         return;
       }
       if (event.key.toLowerCase() === "z") {
@@ -195,7 +199,7 @@ export function EditorPage() {
     setExporting(kind);
     try {
       const { downloadPdf, downloadDocx } = await import("@resume/export");
-      const filename = (doc.name || "resume").trim().replace(/\s+/g, "_");
+      const filename = sanitizeFilename(doc.name || "resume", "");
       if (kind === "pdf") {
         const sheet =
           previewHostRef.current?.querySelector<HTMLElement>(".sheet") ?? document.querySelector<HTMLElement>(".sheet");
@@ -243,7 +247,7 @@ export function EditorPage() {
               variant="ghost"
               aria-label="Undo"
               title="Undo"
-              disabled={history.past.length === 0}
+              disabled={!canUndo}
               onClick={undo}
             >
               <Undo2 className="h-4 w-4" aria-hidden="true" />
@@ -252,7 +256,7 @@ export function EditorPage() {
               variant="ghost"
               aria-label="Redo"
               title="Redo"
-              disabled={history.future.length === 0}
+              disabled={!canRedo}
               onClick={redo}
             >
               <Redo2 className="h-4 w-4" aria-hidden="true" />

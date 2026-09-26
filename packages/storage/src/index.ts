@@ -1,6 +1,8 @@
 import {
   blankResume,
   parseResumeData,
+  parseResumeMeta,
+  validateResumeData,
   normalizeTemplateId,
   type ResumeDocument,
   type TemplateId,
@@ -15,19 +17,24 @@ const MIGRATED_FLAG = "resume_draft_migrated_v2";
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: "id" });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error("IndexedDB open failed"));
+    try {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE, { keyPath: "id" });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error ?? new Error("IndexedDB open failed"));
+      req.onblocked = () => reject(new Error("IndexedDB blocked: close other tabs and retry"));
+    } catch (err) {
+      reject(err instanceof Error ? err : new Error("IndexedDB unavailable"));
+    }
   });
 }
 
-/** Migrate localStorage resume_draft → IndexedDB once. */
+/** Migrate localStorage resume_draft → IndexedDB once. Never flags corrupt drafts as migrated. */
 export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
   if (typeof localStorage === "undefined") return null;
   if (localStorage.getItem(MIGRATED_FLAG) === "1") return null;
@@ -36,20 +43,29 @@ export async function migrateLegacyDraft(): Promise<ResumeDocument | null> {
     localStorage.setItem(MIGRATED_FLAG, "1");
     return null;
   }
+  let parsed: Record<string, unknown>;
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    delete parsed._savedAt;
-    parsed.template = normalizeTemplateId(parsed.template);
-    if (!parsed.id) parsed.id = crypto.randomUUID?.() ?? `migrated-${Date.now()}`;
-    const doc = parseResumeData(parsed);
-    const storage = new IndexedDbStorage();
-    await storage.save(doc);
-    localStorage.setItem(MIGRATED_FLAG, "1");
-    return doc;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    localStorage.setItem(MIGRATED_FLAG, "1");
+    // Not JSON at all: quarantine and clear so boot doesn't retry forever.
+    localStorage.setItem("resume_draft_quarantine_v2", raw.slice(0, 20000));
+    localStorage.removeItem(LEGACY_KEY);
     return null;
   }
+  delete parsed._savedAt;
+  parsed.template = normalizeTemplateId(parsed.template);
+  if (!parsed.id) parsed.id = globalThis.crypto?.randomUUID?.() ?? `migrated-${Date.now()}`;
+  const result = validateResumeData(parsed);
+  if (!result.success) {
+    localStorage.setItem("resume_draft_quarantine_v2", raw.slice(0, 20000));
+    return null;
+  }
+  const storage = new IndexedDbStorage();
+  await storage.save(result.data);
+  localStorage.setItem(`${MIGRATED_FLAG}_backup`, raw.slice(0, 100000));
+  localStorage.removeItem(LEGACY_KEY);
+  localStorage.setItem(MIGRATED_FLAG, "1");
+  return result.data;
 }
 
 export class IndexedDbStorage implements StoragePort {
@@ -83,17 +99,20 @@ export class IndexedDbStorage implements StoragePort {
       const tx = db.transaction(STORE, "readonly");
       const req = tx.objectStore(STORE).getAll();
       req.onsuccess = () => {
-        const rows = (req.result as ResumeDocument[]) ?? [];
-        resolve(
-          rows
-            .map((d) => ({
-              id: d.id || "unknown",
-              title: d.name || "Untitled resume",
-              template: d.template,
-              updatedAt: d.updatedAt || 0,
-            }))
-            .sort((a, b) => b.updatedAt - a.updatedAt),
-        );
+        const rows = (req.result as unknown[]) ?? [];
+        const metas: ResumeMeta[] = [];
+        for (const row of rows) {
+          const parsed = parseResumeMeta(row);
+          if (!parsed.success) continue;
+          const d = parsed.data;
+          metas.push({
+            id: d.id || "unknown",
+            title: d.name || "Untitled resume",
+            template: normalizeTemplateId(d.template),
+            updatedAt: d.updatedAt || 0,
+          });
+        }
+        resolve(metas.sort((a, b) => b.updatedAt - a.updatedAt));
       };
       req.onerror = () => reject(req.error);
     });
@@ -151,12 +170,17 @@ export class LocalResumeLibrary implements ResumeLibraryPort {
 }
 
 export function exportResumeJson(doc: ResumeDocument): string {
-  return JSON.stringify(doc, null, 2);
+  return JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), resume: doc }, null, 2);
 }
 
 export function importResumeJson(raw: string): ResumeDocument {
+  if (raw.length > 10_000_000) throw new Error("Import too large (max 10MB)");
   const parsed = JSON.parse(raw) as unknown;
-  return parseResumeData(parsed);
+  const payload =
+    parsed && typeof parsed === "object" && "resume" in (parsed as Record<string, unknown>)
+      ? (parsed as Record<string, unknown>).resume
+      : parsed;
+  return parseResumeData(payload);
 }
 
 /** In-memory adapter for tests / SSR. */

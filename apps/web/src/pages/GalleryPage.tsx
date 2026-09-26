@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { TEMPLATES, TemplateThumb } from "@resume/templates";
 import type { TemplateId } from "@resume/core";
 import { Button } from "@resume/ui";
@@ -9,6 +10,15 @@ export function GalleryPage() {
   const startSample = useAppStore((s) => s.startSample);
   const setModal = useAppStore((s) => s.setModal);
   const importJsonFile = useAppStore((s) => s.importJsonFile);
+  const resumes = useAppStore((s) => s.resumes);
+  const refreshLibrary = useAppStore((s) => s.refreshLibrary);
+  const openResume = useAppStore((s) => s.openResume);
+  const duplicateResume = useAppStore((s) => s.duplicateResume);
+  const deleteResume = useAppStore((s) => s.deleteResume);
+
+  useEffect(() => {
+    void refreshLibrary();
+  }, [refreshLibrary]);
 
   const onImport = async (file: File) => {
     try {
@@ -28,7 +38,7 @@ export function GalleryPage() {
       >
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Resume Builder</h1>
+            <h1 className="text-xl font-bold text-slate-900">Resume Forge</h1>
             <p className="text-sm text-slate-500">Edit locally. Export PDF or DOCX. Your data stays in this browser.</p>
           </div>
           <nav aria-label="Product" className="flex flex-wrap items-center gap-2">
@@ -55,6 +65,33 @@ export function GalleryPage() {
       </header>
 
       <main id="main" className="mx-auto max-w-5xl px-4 py-8">
+        {resumes.length > 0 && (
+          <section aria-label="Your resumes" className="mb-8">
+            <h2 className="text-lg font-semibold text-slate-800">Your resumes</h2>
+            <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+              {resumes.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{r.title}</p>
+                    <p className="text-xs text-slate-500">{new Date(r.updatedAt).toLocaleString()}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <Button variant="secondary" onClick={() => void openResume(r.id)}>Open</Button>
+                    <Button variant="ghost" onClick={() => void duplicateResume(r.id)}>Duplicate</Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        if (window.confirm(`Delete "${r.title}"?`)) void deleteResume(r.id);
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <div className="mb-6 rounded-xl border border-teal-100 bg-teal-50/60 px-4 py-3 text-sm text-teal-900">
           Have an existing <code className="rounded bg-white px-1">resume.json</code>? Use <strong>Import JSON</strong> —
           files from the previous version (including <code className="rounded bg-white px-1">template: &quot;modern&quot;</code>) are supported.
