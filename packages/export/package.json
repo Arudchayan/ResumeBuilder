@@ -14,7 +14,7 @@
   "dependencies": {
     "@resume/core": "workspace:*",
     "@resume/templates": "workspace:*",
-    "docx": "^9.5.1"
+    "docx": "^9.8.1"
   },
   "devDependencies": {
     "typescript": "^7.0.2"
